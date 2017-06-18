@@ -1,0 +1,14 @@
+Random Player	Random	234	Heuristic Player	evaluation	301	
+Heuristic Player	evaluation	191	Random Player	Random	343	
+Random Player	Random	301	Heuristic Player	evaluation	273	
+Random Player	Random	216	Heuristic Player	evaluation	303	
+Heuristic Player	evaluation	270	Random Player	Random	321	
+Random Player	Random	223	Heuristic Player	evaluation	303	
+Heuristic Player	evaluation	256	Random Player	Random	302	
+Random Player	Random	301	Heuristic Player	evaluation	294	
+Random Player	Random	215	Heuristic Player	evaluation	300	
+Heuristic Player	evaluation	235	Random Player	Random	315	
+Random Player	Random	212	Heuristic Player	evaluation	308	
+Heuristic Player	evaluation	235	Random Player	Random	300	
+Random Player	Random	236	Heuristic Player	evaluation	316	
+Heuristic Player	evaluation	284	Random Player	Random	301	
