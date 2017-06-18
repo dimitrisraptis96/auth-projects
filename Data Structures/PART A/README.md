@@ -1,10 +1,10 @@
 # Candy Crush (Part A)
 
-First task requirements:
+First task's requirements:
 
 - Complete classes *getters/setters*
 - Develop the function that returns the *player's next move*:
 ```
-    CrushUtilities.getRandomMove (availableMoves, randomIndex);
+    int[] CrushUtilities.getRandomMove (availableMoves, randomIndex);
 ```
 
