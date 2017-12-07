@@ -1,6 +1,6 @@
 /*
 *
-* Δίκτυα Υπολογιστών I
+* Computer Networks I
 *
 * Experimental Virtual Lab
 *
