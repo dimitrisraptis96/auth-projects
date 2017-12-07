@@ -36,9 +36,9 @@ interface RequestCodes {
 
 interface FolderNames {
 
-	static final String IMAGE_PATH       	= "./data/images/";
+	static final String IMAGE_PATH       		= "./data/images/";
 	
-	static final String IMAGE_ERROR_PATH	= "./data/error_images/";
+	static final String IMAGE_ERROR_PATH		= "./data/error_images/";
 
 	static final String GPS_PATH			= "./data/gps/";
 
