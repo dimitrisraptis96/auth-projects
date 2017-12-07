@@ -52,9 +52,7 @@ interface FolderNames {
 public class VirtualModem implements RequestCodes, FolderNames {
 
 	private static Modem modem;
-
-	private static final String OUTPUT_FILE = "./image1.jpg";
-
+	
 	public static void main(String[] param) {
  		(new VirtualModem()).demo();
  	}
