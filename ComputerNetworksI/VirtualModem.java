@@ -21,17 +21,17 @@ import java.text.SimpleDateFormat;
 
 interface RequestCodes {
 
-	static final String ECHO_REQUEST_CODE        = "E1264";
+	static final String ECHO_REQUEST_CODE        	= "E1264";
 	
-	static final String IMAGE_REQUEST_CODE       = "M0380";
+	static final String IMAGE_REQUEST_CODE       	= "M0380";
 	
-	static final String IMAGE_ERROR_REQUEST_CODE = "G8166";
+	static final String IMAGE_ERROR_REQUEST_CODE 	= "G8166";
 	
-	static final String GPS_REQUEST_CODE         = "P8928";
+	static final String GPS_REQUEST_CODE        	= "P8928";
 	
-	static final String ACK_REQUEST_CODE         = "Q6678";
+	static final String ACK_REQUEST_CODE        	= "Q6678";
 
-	static final String NACK_REQUEST_CODE        = "R7484";
+	static final String NACK_REQUEST_CODE        	= "R7484";
 }
 
 interface FolderNames {
@@ -180,11 +180,11 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		//Get different packets
 		//===============================================================
 
-		getPacket(IMAGE_REQUEST_CODE      , IMAGE_PATH 		, ".JPG");
-		getPacket(IMAGE_ERROR_REQUEST_CODE, IMAGE_ERROR_PATH, ".JPG");  
-		getPacket(GPS_REQUEST_CODE		  , GPS_PATH		, ".txt");  
-		getPacket(ACK_REQUEST_CODE		  , ACK_PATH		, ".txt");  
-		getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");  
+		getPacket(IMAGE_REQUEST_CODE      	, IMAGE_PATH 		, ".JPG");
+		getPacket(IMAGE_ERROR_REQUEST_CODE	, IMAGE_ERROR_PATH	, ".JPG");  
+		getPacket(GPS_REQUEST_CODE		, GPS_PATH		, ".txt");  
+		getPacket(ACK_REQUEST_CODE		, ACK_PATH		, ".txt");  
+		getPacket(NACK_REQUEST_CODE		, NACK_PATH		, ".txt");  
 
 		//===============================================================
 
@@ -197,8 +197,3 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		System.out.println("\n\nConnection closed.");
 	}
 }
-		// NOTE : Break endless loop by catching sequence "\r\n\n\n".
-		// NOTE : Stop program execution when "NO CARRIER" is detected.
-		// NOTE : A time-out option will enhance program behavior.
-		// NOTE : Continue with further Java code.
-		// NOTE : Enjoy :)
