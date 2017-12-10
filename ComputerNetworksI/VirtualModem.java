@@ -23,28 +23,28 @@ interface RequestCodes {
 
 	static final String ECHO_REQUEST_CODE        = "E1264";
 	
-	static final String IMAGE_REQUEST_CODE       = "M0380";
+	static final String IMAGE_REQUEST_CODE       = "M1378";
 	
 	static final String IMAGE_ERROR_REQUEST_CODE = "G8166";
 	
-	static final String GPS_REQUEST_CODE         = "P8928";
+	static final String GPS_REQUEST_CODE         = "P6664R=5051210";
 	
-	static final String ACK_REQUEST_CODE         = "Q6678";
+	static final String ACK_REQUEST_CODE         = "Q1865";
 
 	static final String NACK_REQUEST_CODE        = "R7484";
 }
 
 interface FolderNames {
 
-	static final String IMAGE_PATH       	= "./data/images/";
+	static final String IMAGE_PATH       		= "./data/images/";
 	
-	static final String IMAGE_ERROR_PATH	= "./data/error_images/";
+	static final String IMAGE_ERROR_PATH		= "./data/error_images/";
 
-	static final String GPS_PATH			= "./data/gps/";
+	static final String GPS_PATH				= "./data/gps/";
 
-	static final String ACK_PATH			= "./data/ack/";
+	static final String ACK_PATH				= "./data/ack/";
 
-	static final String NACK_PATH			= "./data/nack/";
+	static final String NACK_PATH				= "./data/nack/";
 
 }
 
@@ -136,7 +136,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 		if (saveFile(folder, extension)) {
 
-			System.out.println("File saved sucessfully!!!\n");
+			System.out.println("File " + extension + " saved sucessfully!!!\n");
 			return true;
 		}
 
@@ -182,11 +182,11 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		//Get different packets
 		//===============================================================
 
-		getPacket(IMAGE_REQUEST_CODE      , IMAGE_PATH 		, ".JPG");
-		getPacket(IMAGE_ERROR_REQUEST_CODE, IMAGE_ERROR_PATH, ".JPG");  
+		// getPacket(IMAGE_REQUEST_CODE      , IMAGE_PATH 		, ".JPG");
+		// getPacket(IMAGE_ERROR_REQUEST_CODE, IMAGE_ERROR_PATH, ".JPG");  
 		getPacket(GPS_REQUEST_CODE		  , GPS_PATH		, ".txt");  
 		getPacket(ACK_REQUEST_CODE		  , ACK_PATH		, ".txt");  
-		getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");  
+		// getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");  
 
 		//===============================================================
 
