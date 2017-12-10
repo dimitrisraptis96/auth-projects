@@ -23,23 +23,13 @@ interface RequestCodes {
 
 	static final String ECHO_REQUEST_CODE        	= "E1264";
 	
-<<<<<<< HEAD
-	static final String IMAGE_REQUEST_CODE       = "M1378";
-=======
-	static final String IMAGE_REQUEST_CODE       	= "M0380";
->>>>>>> b2c21281b7e73ece49c763f761d134c2a2826906
+	static final String IMAGE_REQUEST_CODE       	= "M1378";
 	
 	static final String IMAGE_ERROR_REQUEST_CODE 	= "G8166";
 	
-<<<<<<< HEAD
-	static final String GPS_REQUEST_CODE         = "P6664R=5051210";
+	static final String GPS_REQUEST_CODE         	= "P6664R=5051299";
 	
-	static final String ACK_REQUEST_CODE         = "Q1865";
-=======
-	static final String GPS_REQUEST_CODE        	= "P8928";
-	
-	static final String ACK_REQUEST_CODE        	= "Q6678";
->>>>>>> b2c21281b7e73ece49c763f761d134c2a2826906
+	static final String ACK_REQUEST_CODE        	= "Q1865";
 
 	static final String NACK_REQUEST_CODE        	= "R7484";
 }
@@ -190,19 +180,11 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		//Get different packets
 		//===============================================================
 
-<<<<<<< HEAD
 		// getPacket(IMAGE_REQUEST_CODE      , IMAGE_PATH 		, ".JPG");
 		// getPacket(IMAGE_ERROR_REQUEST_CODE, IMAGE_ERROR_PATH, ".JPG");  
 		getPacket(GPS_REQUEST_CODE		  , GPS_PATH		, ".txt");  
 		getPacket(ACK_REQUEST_CODE		  , ACK_PATH		, ".txt");  
-		// getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");  
-=======
-		getPacket(IMAGE_REQUEST_CODE      	, IMAGE_PATH 		, ".JPG");
-		getPacket(IMAGE_ERROR_REQUEST_CODE	, IMAGE_ERROR_PATH	, ".JPG");  
-		getPacket(GPS_REQUEST_CODE		, GPS_PATH		, ".txt");  
-		getPacket(ACK_REQUEST_CODE		, ACK_PATH		, ".txt");  
-		getPacket(NACK_REQUEST_CODE		, NACK_PATH		, ".txt");  
->>>>>>> b2c21281b7e73ece49c763f761d134c2a2826906
+		// getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");
 
 		//===============================================================
 
