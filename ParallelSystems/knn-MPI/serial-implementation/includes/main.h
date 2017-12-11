@@ -6,11 +6,17 @@
 
 void init(void);
 
-void print(int row, int col);
+void print(float** arr, int row, int col);
 
 void check_args(void);
 
 void calc_distances (void);
+
+void calc_knn(void);
+
+void find_position(int i, int dist, int id);
+
+void move(int i, int pos);
 
 float euclidean_distance(int first, int second);
 
