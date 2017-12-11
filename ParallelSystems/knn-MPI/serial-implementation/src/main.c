@@ -34,16 +34,28 @@ int main (int argc, char **argv) {
 
   check_args();
   init();
+
   print(db,N,D);
   printf("===============================================\n");
+  printf("\t\tDistances\n");
   printf("===============================================\n");
   calc_distances();
   print(dist_arr,N,N);
-  printf("===============================================\n");
   printf("===============================================\n");  
+  printf("\t\tknn distances\n");
+  printf("===============================================\n");
   calc_knn();
   print(k_dist,N,K);
-  
+  printf("===============================================\n");  
+  printf("\t\tknn id's\n");
+  printf("===============================================\n");
+  print_id();
+  printf("===============================================\n");
+  printf("===============================================\n");
+  int bool = test();
+  printf ("Is test PASSed? %s\n\n", bool?"YES":"NO");
+  print(k_dist,N,K);
+
   return(0);
 }
 
@@ -77,6 +89,7 @@ void init(){
   return;
 }
 
+//Print 2D float arr array
 void print(float **arr, int row, int col){
   int i, j;
   for (i=0; i<row; i++){
@@ -87,6 +100,40 @@ void print(float **arr, int row, int col){
   }
   return;
 }
+
+//Print 2d int arr array
+void print_id(){
+  int i, j;
+  for (i=0; i<N; i++){
+    for (j=0; j<K; j++){
+      printf("%d ", k_id[i][j]);
+    }
+    printf("\n");
+  }
+  return;
+}
+
+//Quicksort
+int cmp_func (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
+}
+
+
+int test(){
+  int i,j;
+
+  for (i=0; i<N; i++){
+    qsort(dist_arr[i], N, sizeof(float), cmp_func);
+    for (j=0; j<K; j++){
+      if (k_dist[i][j] != dist_arr[i][j]){
+        printf("i=%d j=%d",i,j);
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
 
 void check_args() {
   if (N<=0 || K<=0 || D<=0){
@@ -102,6 +149,7 @@ void check_args() {
   return;
 }
 
+
 float euclidean_distance(int first, int second){
   int j;
   float dist = 0;
@@ -109,6 +157,7 @@ float euclidean_distance(int first, int second){
     dist += (db[first][j] - db[second][j]) * (db[first][j] - db[second][j]);
   return dist;
 }
+
 
 void calc_distances (){
   int i, j;
@@ -133,16 +182,9 @@ void calc_distances (){
         dist_arr[i][j] = euclidean_distance(i,j);
     }
   }
-
-  for (i=0; i<N; i++){
-    for (j=0; j<N; j++){
-      printf("%f ", dist_arr[i][j]);
-    }
-    printf("\n");
-  }
-
   return;
 }
+
 
 void calc_knn(){
   int i, j;
@@ -164,7 +206,7 @@ void calc_knn(){
     }
     for (j=0; j<K; j++){
       //TODO: Set infinity as initial value
-      k_dist[i][j] = 10.0;;
+      k_dist[i][j] = FLT_MAX;
       k_id[i][j]   = -1;
     }
   }
@@ -182,16 +224,16 @@ void calc_knn(){
 }
 
 //Find the position of the new distance
-void find_position(int i, int dist, int id){
+void find_position(int i, float dist, int id){
   int j;
   for (j=0; j<K; j++){
     if (dist < k_dist[i][j]){
       //TODO: Check if qsort is quicker
-      if (i==j) continue;
+      // if (i==j) continue;
       move(i,j);
       k_dist[i][j] = dist;
       k_id[i][j]   = id;
-      break;
+      return;
     }
   }
   return;
