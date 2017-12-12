@@ -52,9 +52,7 @@ int main (int argc, char **argv) {
   print_id();
   printf("===============================================\n");
   printf("===============================================\n");
-  int bool = test();
-  printf ("Is test PASSed? %s\n\n", bool?"YES":"NO");
-  print(k_dist,N,K);
+  printf ("\n\nIs test PASSed? %s\n\n", test()?"YES":"NO");
 
   return(0);
 }
@@ -121,12 +119,22 @@ int cmp_func (const void * a, const void * b) {
 
 int test(){
   int i,j;
-
+  //Change -1 with FLT_MAX 
+  for (i=0;i<N;i++){
+    for(j=0;j<N;j++){
+      if (dist_arr[i][j] == -1){
+        dist_arr[i][j] = FLT_MAX;
+      }
+    }
+  }
+  //Sort the dist_arr and do the testing
   for (i=0; i<N; i++){
     qsort(dist_arr[i], N, sizeof(float), cmp_func);
     for (j=0; j<K; j++){
       if (k_dist[i][j] != dist_arr[i][j]){
-        printf("i=%d j=%d",i,j);
+        printf("k_dist=%f\n",k_dist[i][j]);
+        printf("dist_arr=%f\n",dist_arr[i][j]);
+        printf("i=%d j=%d\n",i,j);
         return 0;
       }
     }
