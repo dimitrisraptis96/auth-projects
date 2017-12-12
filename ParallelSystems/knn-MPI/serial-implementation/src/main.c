@@ -8,7 +8,7 @@ int N;
 int D;
 int K;
 
-float **db;
+float **init_arr;
 float **dist_arr;
 float **k_dist;
 int **k_id;
@@ -35,12 +35,6 @@ int main (int argc, char **argv) {
   check_args();
   init();
 
-  print(db,N,D);
-  printf("===============================================\n");
-  printf("\t\tDistances\n");
-  printf("===============================================\n");
-  calc_distances();
-  print(dist_arr,N,N);
   printf("===============================================\n");  
   printf("\t\tknn distances\n");
   printf("===============================================\n");
@@ -65,21 +59,21 @@ void init(){
   FILE * fp;
   fp = fopen (CORPUS_FILENAME, "r");
 
-  db = (float **) malloc(N * sizeof(float *));
-  if(db == NULL) { 
+  init_arr = (float **) malloc(N * sizeof(float *));
+  if(init_arr == NULL) { 
     printf("Memory allocation error!\n");
     exit(1);
   }
 
   for (i=0; i<N; i++) {
-    db[i] = (float *) malloc(D * sizeof(float));
-    if(db[i] == NULL) { 
+    init_arr[i] = (float *) malloc(D * sizeof(float));
+    if(init_arr[i] == NULL) { 
       printf("Memory allocation error!\n");
       exit(1);
     }
 
     for (j=0; j<D; j++) {
-      fscanf(fp, "%f", &db[i][j]);
+      fscanf(fp, "%f", &init_arr[i][j]);
     }
   }
 
@@ -119,6 +113,7 @@ int cmp_func (const void * a, const void * b) {
 
 int test(){
   int i,j;
+  calc_distances();
   //Change -1 with FLT_MAX 
   for (i=0;i<N;i++){
     for(j=0;j<N;j++){
@@ -162,7 +157,7 @@ float euclidean_distance(int first, int second){
   int j;
   float dist = 0;
   for (j=0; j<D; j++)
-    dist += (db[first][j] - db[second][j]) * (db[first][j] - db[second][j]);
+    dist += (init_arr[first][j] - init_arr[second][j]) * (init_arr[first][j] - init_arr[second][j]);
   return dist;
 }
 
