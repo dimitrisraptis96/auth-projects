@@ -20,3 +20,21 @@ public class ack {
 		return;
 	}
 }
+
+
+
+public class Ack {
+
+	private String message;
+
+	public Ack (){
+
+		
+		this.message = getStringPacket();
+
+
+	}
+
+	public 
+
+}

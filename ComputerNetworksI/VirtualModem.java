@@ -14,6 +14,12 @@ import java.io.InputStream;
 import java.io.FileOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
+// import java.nio.file.Files;
+// import java.nio.file.Paths;
+// import java.nio.file.StandardOpenOption;
+import java.nio.charset.StandardCharsets;
+
 import java.util.*;
 
 import java.text.SimpleDateFormat;
@@ -29,9 +35,9 @@ interface RequestCodes {
 	
 	static final String GPS_REQUEST_CODE         	= "P6664R=5051299";
 	
-	static final String ACK_REQUEST_CODE        	= "Q1865";
+	static final String ACK_REQUEST_CODE        	= "Q3599";
 
-	static final String NACK_REQUEST_CODE        	= "R7484";
+	static final String NACK_REQUEST_CODE        	= "R5911";
 }
 
 interface FolderNames {
@@ -52,6 +58,8 @@ interface FolderNames {
 public class VirtualModem implements RequestCodes, FolderNames {
 
 	private static Modem modem;
+
+	private final long SESSION_DURATION = 4*60; 
 	
 	public static void main(String[] param) {
  		(new VirtualModem()).demo();
@@ -167,14 +175,64 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
     }
 
+    public void ackRequest(){
+
+    	Ack ack = new Ack();
+
+		String filename = ack.createFilename();
+
+		long startTime = System.currentTimeMillis();
+
+		sendRequestCode(ACK_REQUEST_CODE);
+		ack.setMessage(getStringPacket());
+		ack.getData();
+
+		ack.saveToFile(filename);
+		do {
+			if (ack.isEqual()){
+				sendRequestCode(ACK_REQUEST_CODE);
+			}
+			else {
+				sendRequestCode(NACK_REQUEST_CODE);
+				ack.errors++;
+			}
+
+			ack.setMessage(getStringPacket());
+			// ack.resetData();
+			ack.getData();
+			ack.requests++;
+			ack.saveToFile(filename);
+
+		} while( (System.currentTimeMillis() - startTime) / 1000 > SESSION_DURATION );
+
+		//last is equal?
+		
+		System.out.printf("Errors = %d\nTotal Requests = %d\n", ack.errors, ack.requests);
+
+		return;
+
+	}
+
 	public void demo() {
 
-		setModem();
+		this.setModem();
 		modem.open("ithaki");
-		getStringPacket();
+		this.getStringPacket();
 
 
-		long startTime = System.currentTimeMillis();  
+		this.ackRequest();
+		//Ack testing
+		// sendRequestCode(ACK_REQUEST_CODE);
+		// new Ack(this.modem).checkRequest();
+		// ack.getEncrypted();
+		// ack.getFCS();
+
+		// while (ack.isEqual()) {
+		// 	System.out.println("No equal!");
+		// }
+
+
+		// long startTime = System.currentTimeMillis();  
 
 		//===============================================================
 		//Get different packets
@@ -182,15 +240,15 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 		// getPacket(IMAGE_REQUEST_CODE      , IMAGE_PATH 		, ".JPG");
 		// getPacket(IMAGE_ERROR_REQUEST_CODE, IMAGE_ERROR_PATH, ".JPG");  
-		getPacket(GPS_REQUEST_CODE		  , GPS_PATH		, ".txt");  
-		getPacket(ACK_REQUEST_CODE		  , ACK_PATH		, ".txt");  
+		// getPacket(GPS_REQUEST_CODE		  , GPS_PATH		, ".txt");  
+		// getPacket(ACK_REQUEST_CODE		  , ACK_PATH		, ".txt");  
 		// getPacket(NACK_REQUEST_CODE		  , NACK_PATH		, ".txt");
 
 		//===============================================================
 
-		long estimatedTime = System.currentTimeMillis() - startTime;
+		// long estimatedTime = System.currentTimeMillis() - startTime;
  
-		System.out.println("Time elapsed: " + Long.toString(estimatedTime) + " msec");
+		// System.out.println("Time elapsed: " + Long.toString(estimatedTime) + " msec");
 
 		modem.close();
 
