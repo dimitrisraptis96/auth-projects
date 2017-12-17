@@ -54,7 +54,7 @@ public class Ack implements RequestCodes, FolderNames {
 			this.encrypted += this.message.charAt(i);
 		}
 
-		System.out.println("Encrpted message: " + this.encrypted);
+		// System.out.println("Encrpted message: " + this.encrypted);
 
 		return;
 	}
@@ -70,7 +70,7 @@ public class Ack implements RequestCodes, FolderNames {
 
 		this.FCS = Integer.parseInt(strFCS);
 
-		System.out.println("FCS = " + this.FCS);
+		// System.out.println("FCS = " + this.FCS);
 
 		return;
 	}
@@ -84,7 +84,7 @@ public class Ack implements RequestCodes, FolderNames {
 			previous = (char) ( previous ^ this.encrypted.charAt(i) );
 		}
 
-		System.out.printf("\nFCS: %d and Encrypted Number = %d\n", this.FCS, (int) previous);
+		// System.out.printf("FCS: %d and Encrypted Number = %d\n\n", this.FCS, (int) previous);
 
 		return ( this.FCS == (int) previous) ? true: false;
 	}
