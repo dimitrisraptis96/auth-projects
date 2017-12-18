@@ -27,20 +27,24 @@ import java.text.SimpleDateFormat;
 
 interface RequestCodes {
 
-	static final String ECHO_REQUEST_CODE        	= "E4767";
+	static final String ECHO_REQUEST_CODE        	= "E0830";
 	
-	static final String IMAGE_REQUEST_CODE       	= "M1378";
+	static final String IMAGE_REQUEST_CODE       	= "M5512";
 	
-	static final String IMAGE_ERROR_REQUEST_CODE 	= "G8166";
+	static final String IMAGE_ERROR_REQUEST_CODE 	= "G0036";
 	
-	static final String GPS_REQUEST_CODE         	= "P6664R=5051299";
+	static final String GPS_REQUEST_CODE         	= "P2420R=5051299";
 	
-	static final String ACK_REQUEST_CODE        	= "Q3811";
+	static final String ACK_REQUEST_CODE        	= "Q3021";
 
-	static final String NACK_REQUEST_CODE        	= "R0313";
+	static final String NACK_REQUEST_CODE        	= "R1346";
 }
 
 interface FolderNames {
+
+	static final String SESSION_1_PATH			= "./session1/";
+
+	static final String SESSION_2_PATH			= "./session2/";
 
 	static final String ECHO_PATH       		= "./data/echo/";
 
@@ -74,7 +78,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
  		modem=new Modem();
 		modem.setSpeed(80000);
-		modem.setTimeout(100);
+		modem.setTimeout(1000);
 		return;
  	}
  
@@ -112,6 +116,14 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 		String timeStamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(new Date());
 		return folder + timeStamp + extension;
+	}
+
+	//Return a unique filename at the specified folder
+	public String getTextFilename (String folder, String name) {
+
+		String timeStamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(new Date());
+		String extension = ".text";
+		return folder + name + timeStamp + extension;
 	}
 
     //Get an image from the modem and save it as .JPG file
@@ -181,13 +193,17 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
     }
 
-    public void echoRequest(){
+
+
+    public void echoRequest(String path){
     	try {
     		int packets = 0;
-    		String filename = ECHO_PATH + "echo-" + new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(new Date()) + ".txt";
-			FileOutputStream out = new FileOutputStream(filename);
-			out.write(("Response time echo packets within 4 min!\n").getBytes());
-			out.write(("========================================\n").getBytes());
+
+    		modem.setTimeout(100);
+
+			FileOutputStream out = new FileOutputStream( getTextFilename(path, "echo-") );
+			out.write(("Response time of echo packets\n").getBytes());
+			out.write(("=============================\n").getBytes());
 
 			long startTime = System.currentTimeMillis();
 
@@ -199,55 +215,59 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 			} while( SESSION_DURATION > (System.currentTimeMillis() - startTime) );
 
+			out.write(("\n\nTotal Packets = " + packets +"\n").getBytes());
 			out.close();
-
-			System.out.printf("Packets = %d\n", packets);
 
 		} catch (IOException e) {
     		e.printStackTrace();
     	}
     }
 
-    public void ackRequest(){
+
+
+    public void arqRequest(String path){
 
 		try {
-	    	Ack ack = new Ack();
+	    	modem.setTimeout(200);
 
-			String filename = ack.createFilename();
-			FileOutputStream out = new FileOutputStream(filename);
-			out.write(("Response time of error free packets!\n").getBytes());
-			out.write(("====================================\n").getBytes());
+	    	int errors 		= 0;
+	    	int requests 	= 1;
+	    	int repeats		= 0;
+	    	
+	    	Arq arq = new Arq();
 
-			long startTime 		= System.currentTimeMillis();
+			FileOutputStream out = new FileOutputStream( getTextFilename(path, "arq-") );
+			out.write(("Response time of ARQ transmitted packets!\n").getBytes());
+			out.write(("=========================================\n").getBytes());
+
+			long startTime = System.currentTimeMillis();
 
 			sendRequestCode(ACK_REQUEST_CODE);
-			ack.setMessage(getStringPacket());
-			ack.getData();
+			arq.setMessage(getStringPacket());
+			arq.getData();
 
-			// ack.saveToFile(filename);
 			do {
-				if (ack.isEqual()){
-					//saveResponseTime(responseTime);
-					out.write((this.responseTime + "\n").getBytes());
+				if (arq.isEqual()){
+					out.write((arq.getTime() + " " + this.responseTime + " " + repeats + "\n").getBytes());
 					sendRequestCode(ACK_REQUEST_CODE);
+					repeats = 0;
 				}
 				else {
 					sendRequestCode(NACK_REQUEST_CODE);
-					ack.errors++;
+					errors++;
+					repeats++;
 				}
 
-				ack.setMessage(getStringPacket());
-				// ack.resetData();
-				ack.getData();
-				ack.requests++;
-				// ack.saveToFile(filename);
+				arq.setMessage(getStringPacket());
+				arq.getData();
+				requests++;
 
 			} while( SESSION_DURATION > (System.currentTimeMillis() - startTime) );
 
-			//last is equal?
+			out.write(("\n\nErrors = " + errors + " Total Requests = " + requests +"\n").getBytes());
 			out.close();
 
-			System.out.printf("Errors = %d\nTotal Requests = %d\n", ack.errors, ack.requests);
+			System.out.printf("Errors = %d\nTotal Requests = %d\n", errors, requests);
 
 		} catch (IOException e) {
     		e.printStackTrace();
@@ -261,17 +281,15 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		modem.open("ithaki");
 		this.getStringPacket();
 
-		// this.echoRequest();
-		this.ackRequest();
-		//Ack testing
-		// sendRequestCode(ACK_REQUEST_CODE);
-		// new Ack(this.modem).checkRequest();
-		// ack.getEncrypted();
-		// ack.getFCS();
-
-		// while (ack.isEqual()) {
-		// 	System.out.println("No equal!");
-		// }
+		//===========================
+		//Session requests
+		//===========================
+		// getPacket(IMAGE_REQUEST_CODE      , SESSION_1_PATH, ".JPG");
+		// getPacket(IMAGE_ERROR_REQUEST_CODE, SESSION_1_PATH, ".JPG");
+		// this.echoRequest(SESSION_1_PATH);
+		// this.arqRequest(SESSION_1_PATH);
+		sendRequestCode(GPS_REQUEST_CODE);
+		getStringPacket();
 
 
 		// long startTime = System.currentTimeMillis();  

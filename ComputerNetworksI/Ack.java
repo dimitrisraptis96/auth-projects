@@ -25,21 +25,6 @@ public class Ack implements RequestCodes, FolderNames {
 
 	private int FCS = 0;
 
-	public int requests = 1;
-
-	public int errors = 0;
-
-	// private boolean isEqual = false;
-
-/*
-	public Ack () {
-
-		// this.message = "";
-		// this.encrypted = "";
-		// this.FCS = 0;
-		// this.modem = modem;
-	}*/
-
 	public void setMessage(String message){
 		this.message = message;
 	}
@@ -89,21 +74,6 @@ public class Ack implements RequestCodes, FolderNames {
 		return ( this.FCS == (int) previous) ? true: false;
 	}
 
-	/*public void request(String code){
-		
-		sendRequestCode(code);
-		setMessage(getStringPacket());
-		this.getEncrypted();
-		this.getFCS();
-		return;
-	}*/
-
-	/*public void resetData(){
-		this.encrypted 	= "";
-		this.FCS 		= "";
-		return;
-	}*/
-
 	public void getData(){
 		this.getEncrypted();
 		this.getFCS();
@@ -137,31 +107,5 @@ public class Ack implements RequestCodes, FolderNames {
             e.printStackTrace();
         }
 	}
-	// public void checkRequest(){
-
-	// 	String filename = createFilename();
-
-	// 	long startTime = System.currentTimeMillis();
-
-	// 	this.request(ACK_REQUEST_CODE);
-	// 	saveToFile(filename, this.message);
-	// 	do {
-	// 		if (this.isEqual()){
-	// 			request(ACK_REQUEST_CODE);
-	// 		}
-	// 		else {
-	// 			errors++;
-	// 			request(NACK_REQUEST_CODE);
-	// 		}
-	// 		requests++;
-	// 		saveToFile(filename, this.message);
-
-	// 	} while( (System.currentTimeMillis() - startTime) > DURATION );
-
-	// 	System.out.printf("Errors = $d\nTotal Requests = %d\n", errors, requests);
-
-	// 	return;
-
-	// }
 
 }
