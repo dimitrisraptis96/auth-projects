@@ -24,10 +24,16 @@ public class Gps {
 		return str.split(System.getProperty("line.separator"));
 	}
 
+	public String convertDM2DMS (String DM){
+
+		int tmp = Integer.parseInt(DM) * 60;
+		return Integer.toString(tmp).substring(0,2);
+	}
+
 	public String buildParamT (){
 
-		this.longitude = this.longitude.substring(0,4) + this.longitude.substring(5,7);
-		this.latitude  = this.latitude.substring(1,5) + this.latitude.substring(6,8);
+		this.longitude = this.longitude.substring(0,4) + convertDM2DMS(this.longitude.substring(5,7));
+		this.latitude  = this.latitude.substring(1,5)  + convertDM2DMS(this.latitude.substring(6,8));
 		return "T=" + this.latitude + this.longitude;
 	}
 
@@ -41,12 +47,9 @@ public class Gps {
 		ArrayList<String> paramTList = new ArrayList<String>();
 
 		for (String line: lines){
-			System.out.println(line);
-			System.out.println(line.substring(0,5));
 			if( line.substring(0,5).equals("START") ) continue;
 			if( line.substring(0,4).equals("STOP")  ) continue;
 			content = line.split(",");
-			System.out.printf("content length = %d", content.length);
 
 			if (content.length == 0){
 				System.out.println("Gps content is empty!");

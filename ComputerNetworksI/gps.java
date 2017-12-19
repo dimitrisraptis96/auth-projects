@@ -1,5 +1,0 @@
-import
-
-public class Gps {
-
-}

@@ -24,17 +24,17 @@ import java.text.SimpleDateFormat;
 
 interface RequestCodes {
 
-	static final String ECHO_REQUEST_CODE        	= "E1417";
+	static final String ECHO_REQUEST_CODE        	= "E5593";
 	
-	static final String IMAGE_REQUEST_CODE       	= "M0014";
+	static final String IMAGE_REQUEST_CODE       	= "M2076";
 	
-	static final String IMAGE_ERROR_REQUEST_CODE 	= "G1876";
+	static final String IMAGE_ERROR_REQUEST_CODE 	= "G5983";
 	
-	static final String GPS_REQUEST_CODE         	= "P0033"; //R=5051299";
+	static final String GPS_REQUEST_CODE         	= "P3617";
 	
-	static final String ACK_REQUEST_CODE        	= "Q2789";
+	static final String ACK_REQUEST_CODE        	= "Q2400";
 
-	static final String NACK_REQUEST_CODE        	= "R0942";
+	static final String NACK_REQUEST_CODE        	= "R2872";
 }
 
 interface FolderNames {
@@ -60,7 +60,7 @@ interface FolderNames {
 
 public class VirtualModem implements RequestCodes, FolderNames {
 
-	private final long SESSION_DURATION = 1*60*1000;
+	private final long SESSION_DURATION = 4*60*1000;
 
 	private static Modem modem;
 
@@ -105,7 +105,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		}
 
 		this.responseTime = System.currentTimeMillis() - responseTime;
-		System.out.println(response);
+		// System.out.println(response);
 		return response;
  	}
 
@@ -158,32 +158,6 @@ public class VirtualModem implements RequestCodes, FolderNames {
     	return true;
     }
 
-/*    //INEFFICIENT way
-    //Another way to read modem. Get the entire stream and then read from the local stream. 
-    public boolean saveInputStream(){
-
-    	try {
-
-    		int k;
-
-	    	InputStream in = modem.getInputStream();
-	   		OutputStream out = new FileOutputStream (getFilename(IMAGE_PATH, ".txt"));
-	   		
-	   		while ((k = in.read()) != -1) {
-	   			out.write(k);
-	   		}
-	    	
-	    	out.close();
-	    	in.close();
-	    	return true;
-    	}
-    	catch (IOException e) {
-    		e.printStackTrace();
-    		return false;
-    	}
-
-    }*/
-
     //Measure response time of echo requests within 4 minutes
     public void echoRequest(String folder, String name, String extension){
     	try {
@@ -214,11 +188,10 @@ public class VirtualModem implements RequestCodes, FolderNames {
     }
 
 
-
     public void arqRequest(String folder, String name, String extension){
 
 		try {
-	    	modem.setTimeout(200);
+	    	modem.setTimeout(500);
 
 	    	int errors 		= 0;
 	    	int requests 	= 1;
@@ -265,6 +238,51 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 	}
 
+	//Measure response time of echo requests within 4 minutes
+    public void gpsRequest(String folder, String name, String extension){
+    	try {
+
+    		modem.setTimeout(1000);
+
+			Gps gps = new Gps();
+
+			String gpsMessage;
+			String paramR = "R=1020099";
+
+			sendRequestCode(GPS_REQUEST_CODE + paramR);
+			gpsMessage = getStringPacket();
+			gps.setMessage(gpsMessage);
+			ArrayList<String> paramTList = gps.getParamTList();
+			
+			// for (int i=0; i<9; i++){
+			// 	//if equal with previous not added
+			// 	paramT += paramTList.get(i);
+			// }
+			int params = 0;
+			String paramT = "";
+			String previousT = "";
+			for (String T: paramTList){
+				if (T.equals(previousT)) continue;
+				if (params > 9) break;
+				paramT += T;
+				previousT = T;
+				params++;
+			}
+
+			// Saving gps traces, as well as R and T param		
+			FileOutputStream out = new FileOutputStream( getFilename(folder, name, extension) );
+			out.write(gpsMessage.getBytes());
+			out.write(("\n\n" + paramR).getBytes());
+			out.write(("\n\n" + paramT).getBytes());
+			out.close();
+
+			getPacket(GPS_REQUEST_CODE + paramT, SESSION_1_PATH, "GPS", ".JPG"); 
+
+		} catch (IOException e) {
+    		e.printStackTrace();
+    	}
+    }
+
 	public void demo() {
 
 		this.setModem();
@@ -274,12 +292,14 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		//===========================
 		//Session requests
 		//===========================
-		// getPacket(IMAGE_REQUEST_CODE      , SESSION_1_PATH, "E1", ".JPG");
-		// getPacket(IMAGE_ERROR_REQUEST_CODE, SESSION_1_PATH, "E2", ".JPG");
-		// this.echoRequest(SESSION_1_PATH, "ECHO", ".txt");
-		// this.arqRequest(SESSION_1_PATH , "ARQ" , ".txt");
-		Gps gps = new Gps();
-		sendRequestCode(GPS_REQUEST_CODE+"R=1050099");
+		getPacket(IMAGE_REQUEST_CODE      , SESSION_1_PATH, "E1", ".JPG");
+		getPacket(IMAGE_ERROR_REQUEST_CODE, SESSION_1_PATH, "E2", ".JPG");
+		this.echoRequest(SESSION_1_PATH, "ECHO", ".txt");
+		this.gpsRequest (SESSION_1_PATH, "GPS" , ".txt");
+		this.arqRequest (SESSION_1_PATH, "ARQ" , ".txt");
+
+		/*Gps gps = new Gps();
+		sendRequestCode(GPS_REQUEST_CODE+"R=1020099");
 		gps.setMessage(getStringPacket());
 		ArrayList<String> paramTList = gps.getParamTList();
 		for (String paramT: paramTList){
@@ -288,11 +308,11 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		String paramT = "";
 		for (int i=0; i<9; i++){
 			//if equal with previous not added
-			paramT += paramTList.get(i*2);
+			paramT += paramTList.get(i);
 		}
 			System.out.println(paramT);
 
-		getPacket(GPS_REQUEST_CODE+paramT		  , GPS_PATH		, "GPS"		, ".JPG");  
+		getPacket(GPS_REQUEST_CODE+paramT		  , GPS_PATH		, "GPS"		, ".JPG");  */
 
 		// getStringPacket();
 
