@@ -1,17 +1,7 @@
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.nio.charset.StandardCharsets;
-
-import java.io.IOException;
-
 import java.util.*;
 
-import java.text.SimpleDateFormat;
 
-
-public class Arq implements RequestCodes, FolderNames {
+public class Arq {
 
 	private final int LENGTH = 16;
 
