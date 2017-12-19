@@ -19,11 +19,13 @@ public class Arq {
 		this.FCS 		= 0;
 	}
 
+	//Set the ACK or NACK message
 	public void setMessage(String message){
 		this.message = message;
 	}
 
-	public void getEncrypted(){
+	//Get the encrypted code of the packet
+	public void setEncrypted(){
 
 		int start 	= message.indexOf('<') + 1;
 		int end 	= message.indexOf('>');
@@ -34,7 +36,8 @@ public class Arq {
 		}
 	}
 
-	public void getFCS(){
+	//Get the FCS code of the packet
+	public void setFCS(){
 
 		String strFCS = "";
 
@@ -48,6 +51,7 @@ public class Arq {
 		this.FCS = Integer.parseInt(strFCS);
 	}
 
+	//Get the time of the packet's transmission
 	public String getTime(){
 
 		String time = "";
@@ -61,6 +65,7 @@ public class Arq {
 		return time;
 	}
 
+	//Check if FCS and encrypted number are equal
 	public boolean isEqual() {
 
 		char previous = this.encrypted.charAt(0);
@@ -72,9 +77,10 @@ public class Arq {
 		return ( this.FCS == (int) previous) ? true: false;
 	}
 
-	public void getData(){
+	//Setting encrypted and FCS variables
+	public void setData(){
 
-		this.getEncrypted();
-		this.getFCS();
+		this.setEncrypted();
+		this.setFCS();
 	}
 }

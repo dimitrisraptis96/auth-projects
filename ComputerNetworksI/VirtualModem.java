@@ -158,7 +158,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
     	return true;
     }
 
-    //Measure response time of echo requests within 4 minutes
+    //Save response time of echo requests within 4 minutes
     public void echoRequest(String folder, String name, String extension){
     	try {
     		int packets = 0;
@@ -182,12 +182,14 @@ public class VirtualModem implements RequestCodes, FolderNames {
 			out.write(("\n\nTotal Packets = " + packets +"\n").getBytes());
 			out.close();
 
+			System.out.printf("Echo packets received = %d\n", packets);
+
 		} catch (IOException e) {
     		e.printStackTrace();
     	}
     }
 
-
+    //Save response time of ARQ successful requests within 4 minutes
     public void arqRequest(String folder, String name, String extension){
 
 		try {
@@ -199,6 +201,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 	    	
 	    	Arq arq = new Arq();
 
+	    	//Open file 
 			FileOutputStream out = new FileOutputStream( getFilename(folder, name, extension) );
 			out.write(("Response time of ARQ transmitted packets!\n").getBytes());
 			out.write(("=========================================\n").getBytes());
@@ -207,9 +210,10 @@ public class VirtualModem implements RequestCodes, FolderNames {
 
 			sendRequestCode(ACK_REQUEST_CODE);
 			arq.setMessage(getStringPacket());
-			arq.getData();
+			arq.setData();
 
 			do {
+				//Check if packet received successfully
 				if (arq.isEqual()){
 					out.write((arq.getTime() + " " + this.responseTime + " " + repeats + "\n").getBytes());
 					sendRequestCode(ACK_REQUEST_CODE);
@@ -222,7 +226,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 				}
 
 				arq.setMessage(getStringPacket());
-				arq.getData();
+				arq.setData();
 				requests++;
 
 			} while( SESSION_DURATION > (System.currentTimeMillis() - startTime) );
@@ -230,7 +234,7 @@ public class VirtualModem implements RequestCodes, FolderNames {
 			out.write(("\n\nErrors = " + errors + " Total Requests = " + requests +"\n").getBytes());
 			out.close();
 
-			System.out.printf("Errors = %d\nTotal Requests = %d\n", errors, requests);
+			System.out.printf("ARQ errors = %d and Total Requests = %d\n", errors, requests);
 
 		} catch (IOException e) {
     		e.printStackTrace();
@@ -254,14 +258,11 @@ public class VirtualModem implements RequestCodes, FolderNames {
 			gps.setMessage(gpsMessage);
 			ArrayList<String> paramTList = gps.getParamTList();
 			
-			// for (int i=0; i<9; i++){
-			// 	//if equal with previous not added
-			// 	paramT += paramTList.get(i);
-			// }
 			int params = 0;
 			String paramT = "";
 			String previousT = "";
 			for (String T: paramTList){
+				//Check if previous T param is the same as the current
 				if (T.equals(previousT)) continue;
 				if (params > 9) break;
 				paramT += T;
@@ -297,25 +298,6 @@ public class VirtualModem implements RequestCodes, FolderNames {
 		this.echoRequest(SESSION_1_PATH, "ECHO", ".txt");
 		this.gpsRequest (SESSION_1_PATH, "GPS" , ".txt");
 		this.arqRequest (SESSION_1_PATH, "ARQ" , ".txt");
-
-		/*Gps gps = new Gps();
-		sendRequestCode(GPS_REQUEST_CODE+"R=1020099");
-		gps.setMessage(getStringPacket());
-		ArrayList<String> paramTList = gps.getParamTList();
-		for (String paramT: paramTList){
-			System.out.println(paramT);
-		}
-		String paramT = "";
-		for (int i=0; i<9; i++){
-			//if equal with previous not added
-			paramT += paramTList.get(i);
-		}
-			System.out.println(paramT);
-
-		getPacket(GPS_REQUEST_CODE+paramT		  , GPS_PATH		, "GPS"		, ".JPG");  */
-
-		// getStringPacket();
-
 
 		// long startTime = System.currentTimeMillis();  
 

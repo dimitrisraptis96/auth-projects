@@ -16,20 +16,24 @@ public class Gps {
 		message = time = latitude = longitude = "";
 	}
 
+	//Get the entire gps message
 	public void setMessage(String message){
 		this.message = message;
 	}
 
+	//Return an String[] array including the lines of the message
 	public String[] getLines(String str){
 		return str.split(System.getProperty("line.separator"));
 	}
 
+	//Convert latitude and longitude from DM format to DMS
 	public String convertDM2DMS (String DM){
 
 		int tmp = Integer.parseInt(DM) * 60;
 		return Integer.toString(tmp).substring(0,2);
 	}
 
+	//Build the T parameter
 	public String buildParamT (){
 
 		this.longitude = this.longitude.substring(0,4) + convertDM2DMS(this.longitude.substring(5,7));
@@ -37,6 +41,7 @@ public class Gps {
 		return "T=" + this.latitude + this.longitude;
 	}
 
+	//Get the T param within every line of the message
 	public ArrayList<String> getParamTList(){
 
 		int previousTime = 0;
@@ -70,16 +75,3 @@ public class Gps {
 		return paramTList;
 	}	
 }
-
-// START ITHAKI GPS TRACKING	
-// $GPGGA,102523.000,4038.2013,N,02256.0490,E,1,09,1.1,14.1,M,36.1,M,,0000*63
-// $GPGGA,102524.000,4038.1984,N,02256.0515,E,1,09,1.1,14.4,M,36.1,M,,0000*69
-// $GPGGA,102525.000,4038.1954,N,02256.0541,E,1,09,1.1,14.4,M,36.1,M,,0000*64
-// $GPGGA,102526.000,4038.1923,N,02256.0568,E,1,09,1.1,14.5,M,36.1,M,,0000*6D
-// $GPGGA,102527.000,4038.1890,N,02256.0596,E,1,09,1.1,14.5,M,36.1,M,,0000*64
-// $GPGGA,102528.000,4038.1857,N,02256.0624,E,1,09,1.1,14.4,M,36.1,M,,0000*6B
-// $GPGGA,102529.000,4038.1823,N,02256.0650,E,1,09,1.1,14.3,M,36.1,M,,0000*6D
-// $GPGGA,102530.000,4038.1789,N,02256.0676,E,1,09,1.1,14.3,M,36.1,M,,0000*6E
-// $GPGGA,102531.000,4038.1753,N,02256.0702,E,1,09,1.1,14.2,M,36.1,M,,0000*6B
-// $GPGGA,102532.000,4038.1714,N,02256.0729,E,1,09,1.1,14.0,M,36.1,M,,0000*60
-// STOP ITHAKI GPS TRACKING
