@@ -24,17 +24,17 @@ import java.text.SimpleDateFormat;
 
 interface RequestCodes {
 
-	static final String ECHO_REQUEST_CODE        	= "E5593";
+	static final String ECHO_REQUEST_CODE        	= "E6896";
 	
-	static final String IMAGE_REQUEST_CODE       	= "M2076";
+	static final String IMAGE_REQUEST_CODE       	= "M6045";
 	
-	static final String IMAGE_ERROR_REQUEST_CODE 	= "G5983";
+	static final String IMAGE_ERROR_REQUEST_CODE 	= "G0057";
 	
-	static final String GPS_REQUEST_CODE         	= "P3617";
+	static final String GPS_REQUEST_CODE         	= "P4926";
 	
-	static final String ACK_REQUEST_CODE        	= "Q2400";
+	static final String ACK_REQUEST_CODE        	= "Q9658";
 
-	static final String NACK_REQUEST_CODE        	= "R2872";
+	static final String NACK_REQUEST_CODE        	= "R1650";
 }
 
 interface FolderNames {
@@ -61,6 +61,8 @@ interface FolderNames {
 public class VirtualModem implements RequestCodes, FolderNames {
 
 	private final long SESSION_DURATION = 4*60*1000;
+
+	private String sessionPath;
 
 	private static Modem modem;
 
@@ -284,20 +286,36 @@ public class VirtualModem implements RequestCodes, FolderNames {
     	}
     }
 
+    public void setSessionPath(int currentSession){
+
+    	switch (currentSession) {
+			case 1:	this.sessionPath = SESSION_1_PATH;
+					break;
+			case 2: this.sessionPath = SESSION_2_PATH;
+					break;
+			default:
+					this.sessionPath = "";
+					System.out.println("Session path is not set successfully!");
+					break;
+		}
+    }
+
 	public void demo() {
 
 		this.setModem();
 		modem.open("ithaki");
 		this.getStringPacket();
 
+		setSessionPath(2);
+
 		//===========================
 		//Session requests
 		//===========================
-		getPacket(IMAGE_REQUEST_CODE      , SESSION_1_PATH, "E1", ".JPG");
-		getPacket(IMAGE_ERROR_REQUEST_CODE, SESSION_1_PATH, "E2", ".JPG");
-		this.echoRequest(SESSION_1_PATH, "ECHO", ".txt");
-		this.gpsRequest (SESSION_1_PATH, "GPS" , ".txt");
-		this.arqRequest (SESSION_1_PATH, "ARQ" , ".txt");
+		getPacket(IMAGE_REQUEST_CODE      , this.sessionPath, "E1", ".JPG");
+		getPacket(IMAGE_ERROR_REQUEST_CODE, this.sessionPath, "E2", ".JPG");
+		this.echoRequest(this.sessionPath, "ECHO", ".txt");
+		this.gpsRequest (this.sessionPath, "GPS" , ".txt");
+		this.arqRequest (this.sessionPath, "ARQ" , ".txt");
 
 		// long startTime = System.currentTimeMillis();  
 
