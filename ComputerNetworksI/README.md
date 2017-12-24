@@ -1,6 +1,6 @@
 # Java serial communications
 
-#### How to run the project:
+### How to run the project:
 
 Change to root directory of the project
 
