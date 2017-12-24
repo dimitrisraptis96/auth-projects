@@ -1,10 +1,15 @@
-How to run the project:
+# Java serial communications
 
-//Change to root directory of the project
-$ cd /ComputerNetworksI
+#### How to run the project:
 
-// Compile source code
-$ javac -d bin -sourcepath ./src -classpath ./lib src/VirtualModem.java
+`//Change to root directory of the project`
 
-// Run the application
-$ java -classpath ./bin:./lib VirtualModem
+`$ cd /ComputerNetworksI`
+
+`// Compile source code`
+
+`$ javac -d bin -sourcepath ./src -classpath ./lib src/VirtualModem.java`
+
+`// Run the application`
+
+`$ java -classpath ./bin:./lib VirtualModem`
