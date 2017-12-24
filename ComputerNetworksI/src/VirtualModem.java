@@ -24,24 +24,24 @@ import java.text.SimpleDateFormat;
 
 interface RequestCodes {
 
-	static final String ECHO_REQUEST_CODE        	= "E6896";
+	static final String ECHO_REQUEST_CODE        	= "E4685";
 	
-	static final String IMAGE_REQUEST_CODE       	= "M6045";
+	static final String IMAGE_REQUEST_CODE       	= "M8081";
 	
-	static final String IMAGE_ERROR_REQUEST_CODE 	= "G0057";
+	static final String IMAGE_ERROR_REQUEST_CODE 	= "G5622";
 	
-	static final String GPS_REQUEST_CODE         	= "P4926";
+	static final String GPS_REQUEST_CODE         	= "P8217";
 	
-	static final String ACK_REQUEST_CODE        	= "Q9658";
+	static final String ACK_REQUEST_CODE        	= "Q8015";
 
-	static final String NACK_REQUEST_CODE        	= "R1650";
+	static final String NACK_REQUEST_CODE        	= "R99331";
 }
 
 interface FolderNames {
 
-	static final String SESSION_1_PATH			= "./session1/";
+	static final String SESSION_1_PATH			= "./data/session1/";
 
-	static final String SESSION_2_PATH			= "./session2/";
+	static final String SESSION_2_PATH			= "./data/session2/";
 
 	static final String ECHO_PATH       		= "./data/echo/";
 
