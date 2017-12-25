@@ -3,9 +3,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include <float.h>
-#include <math.h>
+#include <mpi.h>
 
 void init(void);
 
@@ -13,9 +12,13 @@ void print(double** arr, int row, int col);
 
 void print_id();
 
-int test(void);
+void read_file(void);
 
-int validate(void);
+void memory_allocation(void);
+
+void memory_deallocation(void);
+
+int test(void);
 
 int cmp_func (const void * a, const void * b);
 

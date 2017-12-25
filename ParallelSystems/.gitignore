@@ -1,0 +1,15 @@
+knn-MPI/parallel-implementation/data/corpus.txt
+
+knn-MPI/parallel-implementation/data/bins/train_30.bin
+knn-MPI/parallel-implementation/data/bins/train_30_labels.bin
+knn-MPI/parallel-implementation/data/bins/train_768.bin
+knn-MPI/parallel-implementation/data/bins/train_768_labels.b
+knn-MPI/parallel-implementation/data/bins/train_768_labels.bin
+
+corpus-files/corpus.txt
+corpus-files/validated.txt
+
+matlab-files/mnist_train.txt
+matlab-files/mnist_train_svd.txt
+matlab-files/validation_mnist_train.txt
+matlab-files/validation_mnist_train_svd.txt

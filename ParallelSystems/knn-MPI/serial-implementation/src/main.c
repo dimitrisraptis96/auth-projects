@@ -8,15 +8,22 @@ int N;
 int D;
 int K;
 
-float **init_arr;
-float **dist_arr;
-float **k_dist;
+double **init_arr;
+double **dist_arr;
+double **k_dist;
 int **k_id;
 
-char CORPUS_FILENAME[] = "./data/corpus.txt";
+// char CORPUS_FILENAME[] = "./data/corpus.txt";
+char CORPUS_FILENAME[]      = "../../corpus-files/corpus.txt";
+char VALIDATION_FILENAME[]  = "../../corpus-files/validated.txt";
+
+double PRECISION = 0.00001;
 
 int main (int argc, char **argv) {
-  
+
+  struct timeval startwtime, endwtime;
+  double seq_time;
+
   if (argc != 4) {
     printf("==============================================\n");
     printf("Usage: Serial implementation of knn algorithm.\n");
@@ -35,18 +42,28 @@ int main (int argc, char **argv) {
   check_args();
   init();
 
-  printf("===============================================\n");  
-  printf("\t\tknn distances\n");
-  printf("===============================================\n");
+  //Calculate kNN and measure time passed
+  gettimeofday (&startwtime, NULL);
+  //------------------------------
   calc_knn();
-  print(k_dist,N,K);
-  printf("===============================================\n");  
-  printf("\t\tknn id's\n");
-  printf("===============================================\n");
-  print_id();
-  printf("===============================================\n");
-  printf("===============================================\n");
-  printf ("\n\nIs test PASSed? %s\n\n", test()?"YES":"NO");
+  //------------------------------
+  gettimeofday (&endwtime, NULL);
+
+  seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
+          + endwtime.tv_sec - startwtime.tv_sec);
+  
+  // printf("===============================================\n");  
+  // printf("\t\tknn distances\n");
+  // printf("===============================================\n");
+  // print(k_dist,N,K);
+  // printf("===============================================\n");  
+  // printf("\t\tknn id's\n");
+  // printf("===============================================\n");
+  // print_id();
+  // printf("===============================================\n");
+  printf("Is test PASSed? %s\n\n", validate()?"YES":"NO");
+  printf("===============================================\n\n");
+  printf("Serial kNN wall clock time = %f\n", seq_time);
 
   return(0);
 }
@@ -59,21 +76,21 @@ void init(){
   FILE * fp;
   fp = fopen (CORPUS_FILENAME, "r");
 
-  init_arr = (float **) malloc(N * sizeof(float *));
+  init_arr = (double **) malloc(N * sizeof(double *));
   if(init_arr == NULL) { 
     printf("Memory allocation error!\n");
     exit(1);
   }
 
   for (i=0; i<N; i++) {
-    init_arr[i] = (float *) malloc(D * sizeof(float));
+    init_arr[i] = (double *) malloc(D * sizeof(double));
     if(init_arr[i] == NULL) { 
       printf("Memory allocation error!\n");
       exit(1);
     }
 
     for (j=0; j<D; j++) {
-      fscanf(fp, "%f", &init_arr[i][j]);
+      fscanf(fp, "%lf", &init_arr[i][j]);
     }
   }
 
@@ -81,12 +98,12 @@ void init(){
   return;
 }
 
-//Print 2D float arr array
-void print(float **arr, int row, int col){
+//Print 2D double arr array
+void print(double **arr, int row, int col){
   int i, j;
   for (i=0; i<row; i++){
     for (j=0; j<col; j++){
-      printf("%f ", arr[i][j]);
+      printf("%lf ", arr[i][j]);
     }
     printf("\n");
   }
@@ -114,21 +131,21 @@ int cmp_func (const void * a, const void * b) {
 int test(){
   int i,j;
   calc_distances();
-  //Change -1 with FLT_MAX 
+  //Change -1 with DBL_MAX 
   for (i=0;i<N;i++){
     for(j=0;j<N;j++){
       if (dist_arr[i][j] == -1){
-        dist_arr[i][j] = FLT_MAX;
+        dist_arr[i][j] = DBL_MAX;
       }
     }
   }
   //Sort the dist_arr and do the testing
   for (i=0; i<N; i++){
-    qsort(dist_arr[i], N, sizeof(float), cmp_func);
+    qsort(dist_arr[i], N, sizeof(double), cmp_func);
     for (j=0; j<K; j++){
       if (k_dist[i][j] != dist_arr[i][j]){
-        printf("k_dist=%f\n",k_dist[i][j]);
-        printf("dist_arr=%f\n",dist_arr[i][j]);
+        printf("k_dist=%lf\n",k_dist[i][j]);
+        printf("dist_arr=%lf\n",dist_arr[i][j]);
         printf("i=%d j=%d\n",i,j);
         return 0;
       }
@@ -137,6 +154,29 @@ int test(){
   return 1;
 }
 
+int validate(){
+  int i,j;
+  double tmp;
+
+  FILE * fp;
+  fp = fopen (VALIDATION_FILENAME, "r");
+
+  for (i=0; i<N; i++) {
+    for (j=0; j<K; j++) {
+      fscanf(fp, "%lf", &tmp);
+
+      if(!(fabs(tmp - k_dist[i][j]) < PRECISION)){
+        printf("k_dist=%lf\n",k_dist[i][j]);
+        printf("validate_tmp=%lf\n",tmp);
+        printf("i=%d j=%d\n",i,j);
+        fclose(fp);
+        return 0;
+      }
+    }
+  }
+  fclose(fp);
+  return 1;
+}
 
 void check_args() {
   if (N<=0 || K<=0 || D<=0){
@@ -153,9 +193,9 @@ void check_args() {
 }
 
 
-float euclidean_distance(int first, int second){
+double euclidean_distance(int first, int second){
   int j;
-  float dist = 0;
+  double dist = 0;
   for (j=0; j<D; j++)
     dist += (init_arr[first][j] - init_arr[second][j]) * (init_arr[first][j] - init_arr[second][j]);
   return dist;
@@ -165,14 +205,14 @@ float euclidean_distance(int first, int second){
 void calc_distances (){
   int i, j;
 
-  dist_arr = (float **) malloc(N * sizeof(float *));
+  dist_arr = (double **) malloc(N * sizeof(double *));
   if(dist_arr == NULL) { 
     printf("Memory allocation error!\n");
     exit(1);
   }
 
   for (i=0; i<N; i++) {
-    dist_arr[i] = (float *) malloc(N * sizeof(float));
+    dist_arr[i] = (double *) malloc(N * sizeof(double));
     if(dist_arr[i] == NULL) { 
       printf("Memory allocation error!\n");
       exit(1);
@@ -191,25 +231,26 @@ void calc_distances (){
 
 void calc_knn(){
   int i, j;
-  float dist;
+  double dist;
 
-  //Memory allocation for k_dist[N][K] array
-  k_dist = (float **) malloc(N * sizeof(float *));
+  //TODO: USE 1 FOR QUICKER RESULTS!!! 
+
+  //Memory allocation for k_dist[N][K] and k_id[N][K] array
+  k_dist = (double **) malloc(N * sizeof(double *));
   k_id = (int **) malloc(N * sizeof(int *));
   if( (k_dist == NULL) || (k_id == NULL) ) { 
     printf("Memory allocation error!\n");
     exit(1);
   }
   for (i=0; i<N; i++) {
-    k_dist[i] = (float *) malloc(K * sizeof(float));
+    k_dist[i] = (double *) malloc(K * sizeof(double));
     k_id[i] = (int *) malloc(K * sizeof(int));
     if( (k_dist[i] == NULL) || (k_id[i] == NULL) ) { 
       printf("Memory allocation error!\n");
       exit(1);
     }
     for (j=0; j<K; j++){
-      //TODO: Set infinity as initial value
-      k_dist[i][j] = FLT_MAX;
+      k_dist[i][j] = DBL_MAX;
       k_id[i][j]   = -1;
     }
   }
@@ -227,7 +268,7 @@ void calc_knn(){
 }
 
 //Find the position of the new distance
-void find_position(int i, float dist, int id){
+void find_position(int i, double dist, int id){
   int j;
   for (j=0; j<K; j++){
     if (dist < k_dist[i][j]){
