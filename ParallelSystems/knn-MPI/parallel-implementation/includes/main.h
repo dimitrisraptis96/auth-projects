@@ -14,6 +14,8 @@ void print_id();
 
 void read_file(void);
 
+void ring_comm(int tag);
+
 void memory_allocation(void);
 
 void memory_deallocation(void);
