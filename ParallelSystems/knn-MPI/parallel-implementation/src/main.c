@@ -1,5 +1,9 @@
 #include "../includes/main.h"
 
+#define FIRST_REP 1
+
+#define OTHER_REP 0
+
 //global variables
 int N;
 int D;
@@ -7,7 +11,7 @@ int K;
 
 int PID;
 int MAX;
-int UNIT;
+int CHUNK;
 MPI_Status Stat;
 
 double **in_buffer;
@@ -44,25 +48,13 @@ int main (int argc, char **argv) {
   check_args();
   init();
 
-  ring_comm(2);
-  if(PID == 2){
-    // MPI_Barrier(MPI_COMM_WORLD);
-    print(out_buffer,UNIT,D);
-    printf("-----------\n");    
-    print(in_buffer,UNIT,D);
-    // MPI_Barrier(MPI_COMM_WORLD);
-    // MPI_Finalize();
-  }
-  MPI_Barrier(MPI_COMM_WORLD);
+  //Time start
+  knn();
+  //Time end
 
-  ring_comm(3);
-  MPI_Barrier(MPI_COMM_WORLD);
-  if(PID == 2){
-    // MPI_Barrier(MPI_COMM_WORLD);
-    print(out_buffer,UNIT,D);
-    printf("-----------\n");    
-    print(in_buffer,UNIT,D);
-    // MPI_Barrier(MPI_COMM_WORLD);
+  //Save results
+
+  if(PID == 0){
     MPI_Finalize();
   }
 
@@ -92,31 +84,7 @@ int main (int argc, char **argv) {
   return(0);
 }
 
-void ring_comm(int tag){
-  int i, source, dest;
 
-  source  = (PID - 1);
-  dest    = (PID + 1);
-
-  if (PID != 0){
-    for (i=0; i<UNIT; i++)
-      MPI_Recv(in_buffer[i], D, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &Stat);
-    printf("[Ring]: Process %d received buffer from process %d\n", PID, source);
-  } 
-
-  for (i=0; i<UNIT; i++)
-    MPI_Send(out_buffer[i], D, MPI_DOUBLE, dest % MAX, tag, MPI_COMM_WORLD);
-
-  // Now process 0 can receive from the last process.
-  if (PID == 0){
-    for (i=0; i<UNIT; i++)
-      MPI_Recv(in_buffer[i], D, MPI_DOUBLE, MAX-1, tag, MPI_COMM_WORLD, &Stat);
-    printf("[Ring]: Process %d received buffer from process %d\n", PID, MAX-1);
-  }
-  out_buffer = in_buffer;
-
-  MPI_Barrier(MPI_COMM_WORLD);
-}
 
 void check_args() {
   if (N<=0 || K<=0 || D<=0){
@@ -139,7 +107,7 @@ void check_args() {
 
 //Dynamically allocate memory and create the 2D-array
 void init(){
-  UNIT = N/MAX;
+  CHUNK = N/MAX;
   memory_allocation();
   read_file();
   return;
@@ -149,11 +117,11 @@ void init(){
 void memory_allocation(){
   int i;
 
-  in_buffer   = (double **) malloc(UNIT * sizeof(double *));
-  out_buffer  = (double **) malloc(UNIT * sizeof(double *));
-  array       = (double **) malloc(UNIT * sizeof(double *));
-  k_dist      = (double **) malloc(UNIT * sizeof(double *));
-  k_id        = (int **) malloc(UNIT * sizeof(int *));
+  in_buffer   = (double **) malloc(CHUNK * sizeof(double *));
+  out_buffer  = (double **) malloc(CHUNK * sizeof(double *));
+  array       = (double **) malloc(CHUNK * sizeof(double *));
+  k_dist      = (double **) malloc(CHUNK * sizeof(double *));
+  k_id        = (int **) malloc(CHUNK * sizeof(int *));
   if(in_buffer == NULL || out_buffer == NULL || array == NULL || k_dist == NULL || k_id == NULL) { 
     printf("Memory allocation error 1!\n");
     exit(1);
@@ -179,74 +147,123 @@ void memory_allocation(){
 }
 
 void read_file(){
-  int i, j, source;
+  int i, j, source, dest;
  
-  //The 1rst process handles the reading and sends to the other processes
   if (PID == 0){
-    int index_buff, dest;
+    //MASTER process handles the reading and sends to the other processes
+    int index_buff;
     dest =1;
 
     FILE * fp;
     fp = fopen(CORPUS_FILENAME,"r");
     
     for (i=0; i<N; i++){      
-      index_buff = i % UNIT;
+      index_buff = i % CHUNK;
       for (j=0; j<D; j++) 
         fscanf(fp, "%lf", &out_buffer[index_buff][j]);
 
-      //The 1rs process keeps the last buffer for itself
-      if (dest >= MAX)
-        continue;
-      // if (i == N -1)
-        // break;
+      //The process with PID=0 keeps the last buffer for itself
+      if (dest >= MAX) continue;
 
       MPI_Send(out_buffer[index_buff], D, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
 
-      //Send buffer to the next process when buffer is full
-      if (index_buff == UNIT-1){
-        dest++;
-        // if (MPI_SUCCESS == MPI_Send(&buffer[0][0], UNIT*(D+2), MPI_DOUBLE, ++dest, 0, MPI_COMM_WORLD))
-          // printf("Process 0 sent buffer to process %d\n", dest); 
-      }
+      //Check when buffer is full to change process
+      if (index_buff == CHUNK-1) dest++;
     }
     fclose(fp);
-    array = out_buffer;
+    copy_2D_arrays(array, out_buffer);
   }
   else {
+    //SLAVE processes receice the data
     source = 0;
-    for (i=0; i<UNIT; i++){
+    for (i=0; i<CHUNK; i++)
       MPI_Recv(array[i], D, MPI_DOUBLE, source, 0, MPI_COMM_WORLD, &Stat);
-    }
+
     printf("[Init] Process %d received array from process 0\n", PID); 
-    // if (MPI_SUCCESS == MPI_Recv(&buffer, UNIT*(D+2), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &Stat)){
+    // if (MPI_SUCCESS == MPI_Recv(&buffer, CHUNK*(D+2), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &Stat)){
     //   printf("Process %d received buffer from process 0\n", PID); 
     // }
-    out_buffer = array;
+    copy_2D_arrays(out_buffer, array);
   }
   
   MPI_Barrier(MPI_COMM_WORLD);
+}
+
+//Change chunks between processes using ring topology
+//http://mpitutorial.com/tutorials/mpi-send-and-receive/
+void ring_comm(int tag){
+  int i, j, source, dest;
+
+  source  = (PID - 1);
+  dest    = (PID + 1);
+
+  if (PID != 0){
+    for (i=0; i<CHUNK; i++)
+      MPI_Recv(in_buffer[i], D, MPI_DOUBLE, source, tag, MPI_COMM_WORLD, &Stat);
+    printf("[Ring]: Process %d received buffer from process %d\n", PID, source);
+  } 
+
+  for (i=0; i<CHUNK; i++)
+    MPI_Send(out_buffer[i], D, MPI_DOUBLE, dest % MAX, tag, MPI_COMM_WORLD);
+
+  // Now process 0 can receive from the last process.
+  if (PID == 0){
+    for (i=0; i<CHUNK; i++)
+      MPI_Recv(in_buffer[i], D, MPI_DOUBLE, MAX-1, tag, MPI_COMM_WORLD, &Stat);
+    printf("[Ring]: Process %d received buffer from process %d\n", PID, MAX-1);
+  }
+
+  for (i=0; i<CHUNK; i++){
+    for (j=0; j<D; j++){
+      out_buffer[i][j] = in_buffer[i][j];
+    }
+  }
+  copy_2D_arrays(out_buffer, in_buffer);
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+//Calculate knn
+void knn(){
+  int i;
+
+  init_dist();
+
+  //Initial comparison with its own data
+  calc_knn(FIRST_REP);
+
+  for (i=0; i<MAX-1; i++){
+    ring_comm(i);
+    //Debugging
+    if(PID == 2){
+      printf("-----------\n");       
+      printf("[DEBUG]: The knn of process with PID = %d at ring state %d.\n", PID, i); 
+      printf("-----------\n"); 
+      print(k_dist,CHUNK,K);
+      // print(out_buffer,CHUNK,D);
+    }
+    calc_knn(OTHER_REP);
+  }
+
+  if(PID == 2){
+    printf("-----------\n");       
+    printf("[DEBUG]: FINAL knn of process with PID = %d", PID); 
+    printf("-----------\n"); 
+    print(k_dist,CHUNK,K);
+  }
+
+  //Now every process has its overall knn
   return;
 }
 
-
-/*void memory_deallocation(){
-  int i;
-
-  for (i=0; i<D; i++){
-    free (buffer[i]);
-    free (array[i]);
+//Copy all arr2 elements to arr1
+void copy_2D_arrays(double **arr1, double **arr2){
+  int i,j;
+  for (i=0; i<CHUNK; i++){
+    for (j=0; j<D; j++){
+      arr1[i][j] = arr2[i][j];
+    }
   }
-  for (i=0; i<K; i++){
-    free (k_dist[i]);
-    free (k_id[i]);
-  }
-  free (buffer);
-  free (array);
-  free (k_dist);
-  free (k_id);
-  return;
-}*/
-
+}
 
 //Print 2D double arr array
 void print(double **arr, int row, int col){
@@ -272,10 +289,6 @@ void print_id(){
   return;
 }
 
-//Quicksort
-int cmp_func (const void * a, const void * b) {
-   return ( *(int*)a - *(int*)b );
-}
 
 
 /*int test(){
@@ -306,71 +319,32 @@ int cmp_func (const void * a, const void * b) {
 
 
 
-/*double euclidean_distance(int first, int second){
+double euclidean_distance(int first, int second){
   int j;
   double dist = 0;
   for (j=0; j<D; j++)
-    dist += (buffer[first][j] - buffer[second][j]) * (buffer[first][j] - buffer[second][j]);
+    dist += (array[first][j] - out_buffer[second][j]) * (array[first][j] - out_buffer[second][j]);
   return dist;
 }
-*/
 
-/*void calc_distances (){
+void init_dist(){
   int i, j;
-
-  dist_arr = (double **) malloc(N * sizeof(double *));
-  if(dist_arr == NULL) { 
-    printf("Memory allocation error!\n");
-    exit(1);
-  }
-
-  for (i=0; i<N; i++) {
-    dist_arr[i] = (double *) malloc(N * sizeof(double));
-    if(dist_arr[i] == NULL) { 
-      printf("Memory allocation error!\n");
-      exit(1);
-    }
-    for (j=0; j<N; j++) {
-      if (i==j) {
-          dist_arr[i][j] = -1.0;
-          continue;
-        }
-        dist_arr[i][j] = euclidean_distance(i,j);
-    }
-  }
-  return;
-}
-
-
-void calc_knn(){
-  int i, j;
-  double dist;
-
-  //Memory allocation for k_dist[N][K] array
-  k_dist = (double **) malloc(N * sizeof(double *));
-  k_id = (int **) malloc(N * sizeof(int *));
-  if( (k_dist == NULL) || (k_id == NULL) ) { 
-    printf("Memory allocation error!\n");
-    exit(1);
-  }
-  for (i=0; i<N; i++) {
-    k_dist[i] = (double *) malloc(K * sizeof(double));
-    k_id[i] = (int *) malloc(K * sizeof(int));
-    if( (k_dist[i] == NULL) || (k_id[i] == NULL) ) { 
-      printf("Memory allocation error!\n");
-      exit(1);
-    }
+  for (i=0; i<CHUNK; i++) {
     for (j=0; j<K; j++){
-      //TODO: Set infinity as initial value
       k_dist[i][j] = DBL_MAX;
       k_id[i][j]   = -1;
     }
   }
+}
+
+void calc_knn(int rep){
+  int i, j;
+  double dist;
 
   //Calculate k nearest points
-  for(i=0; i<N; i++){
-    for (j=0; j<N; j++) {
-      if (i==j) continue;
+  for(i=0; i<CHUNK; i++){
+    for (j=0; j<CHUNK; j++) {
+      if (i==j && rep) continue;
         dist = euclidean_distance(i,j);
         if (dist < k_dist[i][K-1]){
           find_position(i,dist,j);  //Just found a new closer distance
@@ -384,7 +358,6 @@ void find_position(int i, double dist, int id){
   int j;
   for (j=0; j<K; j++){
     if (dist < k_dist[i][j]){
-      //TODO: Check if qsort is quicker
       // if (i==j) continue;
       move(i,j);
       k_dist[i][j] = dist;
@@ -404,4 +377,4 @@ void move(int i, int pos){
     k_id[i][j]   = k_id[i][j-1];
   }
   return;
-}*/
+}
