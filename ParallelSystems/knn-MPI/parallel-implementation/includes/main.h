@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <float.h>
+#include <math.h>
 #include <mpi.h>
 
 void init(void);
@@ -24,7 +26,7 @@ void memory_allocation(void);
 
 // void memory_deallocation(void);
 
-int test(void);
+int validate(void);
 
 void check_args(void);
 
