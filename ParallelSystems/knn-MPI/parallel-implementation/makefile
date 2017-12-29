@@ -1,2 +1,2 @@
 all:
-	mpicc -Wall -Werror -o ./bin/main ./src/main.c 
+	mpicc -Wall -Werror -o ./bin/no_block ./src/no_block.c 

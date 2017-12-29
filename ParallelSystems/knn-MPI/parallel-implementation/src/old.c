@@ -1,6 +1,6 @@
 //mpirun -npirun -n 4 ./bin/main 10000 100 5
 
-#include "../includes/main.h"
+#include "../includes/old.h"
 
 #define CORPUS_PATH     "../../corpus-files/corpus.txt"
 
