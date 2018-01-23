@@ -8,10 +8,14 @@ long double **x;
 long double **y;
 long double **y_new;
 long double **m;
-long double **d;
-int **id;
+int *nNbr;
 
-// TODO: free()
+typedef struct {
+    int j;
+    long double distance;
+} SparseData;
+
+SparseData **w;
 
 void serial(){
   printf("[INFO]: SERIAL IMPLEMENTATION\n");
@@ -30,10 +34,11 @@ void serial(){
 
   seq_time = (long double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
-  
+
   /*printf("\n\nIs test PASSed? %s\n\n", validate_serial()?"YES":"NO");
   printf("===============================================\n\n");*/
-  printf("Serial meanshift wall clock time = %f\n", seq_time);
+  printf("\n\n[INFO]:Serial meanshift wall clock time = %f\n", seq_time);
+
 }
 
 void init_serial(){
@@ -45,21 +50,18 @@ void init_serial(){
 void memory_allocation(){
   int i;
   
-  if (VERBOSE) printf("[INFO]: Allocating memory\n");
+  if (VERBOSE) printf("[INFO]: Allocating memory...\n");
 
-  nNbr  = (int *)     malloc(N * sizeof(int));
   x     = (long double **) malloc(N * sizeof(long double *));
   y     = (long double **) malloc(N * sizeof(long double *));
   y_new = (long double **) malloc(N * sizeof(long double *));
   m     = (long double **) malloc(N * sizeof(long double *));
-  d     = (long double **) malloc(N * sizeof(long double *));
-  id    = (int **)    malloc(N * sizeof(int *));
+  w     = (SparseData **)  malloc(N * sizeof(SparseData *));
+  nNbr  = (int *)          malloc(N * sizeof(int));
 
-  if( (nNbr == NULL) || (x == NULL) || (y == NULL) || 
-      (y_new == NULL) || (m == NULL) || (d == NULL) || 
-      (id == NULL)) { 
-    printf("[ERROR]: Memory allocation error 1!\n");
-    exit(1);
+  if ( (nNbr == NULL)  || (x == NULL) || (y == NULL) || 
+      (y_new == NULL) || (m == NULL) || (w==NULL) ) { 
+    perror("[ERROR]:"); exit(1);
   }
 
   for (i=0; i<N; i++) {
@@ -67,29 +69,32 @@ void memory_allocation(){
     y[i]      = (long double *) malloc(D * sizeof(long double));
     y_new[i]  = (long double *) malloc(D * sizeof(long double));
     m[i]      = (long double *) malloc(D * sizeof(long double));
-    d[i]      = (long double *) malloc(N * sizeof(long double));
-    id[i]     = (int *) malloc   (N * sizeof(int));
 
     if( (x[i] == NULL) || (y[i] == NULL) || (y_new[i] == NULL) || (m[i] == NULL) ) { 
-      printf("[ERROR]: Memory allocation error 2!\n");
-      exit(1);
+      perror("[ERROR]:"); exit(1);
     }
   }
 }
 
-/*void read_file_bin()
-{
-    FILE *f;
-    f = fopen(DATASET_PATH, "rb");
-    fseek(f, 0L, SEEK_END);
-    int pos = ftell(f);
-    fseek(f, 0L, SEEK_SET);
-
-    int number_elements = pos / sizeof(long double);
-    long double *x = (long double *) malloc(sizeof *x * number_elements);
-    int tmp = fread(x, sizeof *x, number_elements, f);
-    fclose(f);
-}*/
+void free_memory(){
+  int i;
+  if (VERBOSE) printf("[INFO]: Deallocating memory...\n");
+  //free() data
+  for (i=0; i<N; i++){
+    free(x[i]);
+    free(y[i]);
+    free(y_new[i]);
+    free(m[i]);
+    free(w[i]);
+  }
+  // free() pointers
+  free(x);
+  free(y);
+  free(y_new);
+  free(m);
+  free(w);
+  free(nNbr);
+}
 
 void read_file(){
   int i,j;
@@ -97,15 +102,11 @@ void read_file(){
   FILE * fp;
   fp = fopen (DATASET_PATH, "r");
 
-  if (fp == NULL){perror("[ERROR]: "); exit(1);}
+  if (fp == NULL) { perror("[ERROR]: "); exit(1); }
 
   for (i=0; i<N; i++) 
-    for (j=0; j<D; j++){
-      if (EOF ==  fscanf(fp, "%Lf", &x[i][j])) {
-        perror("[ERROR]:"); exit(1);
-      }
-      // x[i][j]/=10000;
-    }
+    for (j=0; j<D; j++)
+      if (EOF ==  fscanf(fp, "%Lf", &x[i][j])) { perror("[ERROR]:"); exit(1); }
 
   fclose(fp);
 }
@@ -114,7 +115,7 @@ void write_csv_file (char *message, long double **a, const int ROW, const int CO
   int i,j;
 
   FILE * fp;
-  fp = fopen (OUTPUT_PATH, "w+a");
+  fp = fopen (OUTPUT_PATH, "w");
 
   if (fp == NULL){ perror("[ERROR]: "); exit(1); }
 
@@ -127,36 +128,13 @@ void write_csv_file (char *message, long double **a, const int ROW, const int CO
       }
     fprintf(fp,"\n");
   }
-  fprintf(fp,"\n\n");
 
   fclose(fp);
 }
 
-// TODO
+// TODO:
 int validate(){
-  /*int i,j;
-  long double tmp;
 
-  FILE * fp;
-  fp = fopen (VALIDATION_PATH, "r");
-  if (fp == NULL){ perror("[ERROR]:"); exit(1);}
-
-  for (i=0; i<N; i++) {
-    for (j=0; j<D; j++) {
-      if(EOF == fscanf(fp, "%Lf", &tmp)) { perror("[ERROR]:"); exit(1);}
-
-      if(!(fabs(tmp - k_dist[i][j]) < PRECISION)){
-        printf("[INFO]: Validation failed:\n");
-        // printf("k_dist=%Lf\n",k_dist[i][j]);
-        // printf("validate_tmp=%Lf\n",tmp);
-        // printf("i=%d j=%d\n",i,j);
-        fclose(fp);
-        return 0;
-      }
-    }
-  }
-  fclose(fp);
-  return 1;*/
   return 1;
 }
 
@@ -168,128 +146,139 @@ void init_arr(){
       y[i][j]  = x[i][j];
       m[i][j]  = LDBL_MAX;
     }
-    for (j=0; j<N; j++){
-      d[i][j]  = -1.0;
-      id[i][j] = -1;
-    }
   }
 }
 
-// Find the x points that are closer than EPSILON for each y point
+
 void meanshift(){
   int iter=0;
   long double norm = LDBL_MAX;
 
-  struct timeval startwtime, endwtime;
-  double seq_time;
-  
   init_arr();
 
   while (norm > EPSILON){
     iter++;
 
-//==========================================================================
     // find distances between each row of y and the rows of x 
     // that are BANDWIDTH or less distant.
     // And calculate kernels for these distances.
-    rangesearch();
+    rangesearch2sparse();
 
     // compute new y vector
-    cpu_matrix_mult(y_new,d,x,N,N,D);
+    matrix_mult();
 
     // normalize vector
-    normalize(y_new,N,D);    
+    normalize();    
 
     // calculate meanshift
-    calc_meanshift(m,y_new,y,N,D);
+    calc_meanshift();
 
     // update y
     copy_2Darray(y_new, y,N,D);
 
     // calculate Frobenius norm
-    norm = frob_norm(m,N,D);
+    norm = frob_norm();
 
     if (VERBOSE){
       printf("[INFO]: Iteration %d - error %Lf\n", iter, norm);
     }
-  }
-
-  // if (VERBOSE)  write_csv_file("",y_new,N,D);
+  } 
+  if (VERBOSE)  write_csv_file("",y_new,N,D);
+  
+  free_memory();
 }
 
 
-void rangesearch(){
-  int i,j;
+void rangesearch2sparse(){
+  int i,j, index;
   long double dist;
+
+  // malloc buffer for sparse matrix's rows
+  long double *buffer = (long double *) malloc(N*sizeof(long double));
+  if(buffer == NULL) { perror("[ERROR]:");exit(1); }
 
   for (i=0; i<N; i++){
     for (j=0; j<N; j++){
-      if (i==j) {d[i][j] = 1; continue;}
+      // make sure diagonal elements are 1
+      if (i==j) {
+        buffer[j] = 1; nNbr[i]++; 
+        continue;
+      }
 
+      // find distances inside radius
       dist = euclidean_distance(i,j);
-
-      // (dist<BANDWIDTH*BANDWIDTH) ? (d[i][j]= gaussian_kernel(dist)) : (d[i][j]=0);
-      if (dist<BANDWIDTH*BANDWIDTH){
-        d[i][j]= gaussian_kernel(dist);
+      if (dist < BANDWIDTH*BANDWIDTH){  // radius^2 because I don't use sqrt() at dist
+        buffer[j]= gaussian_kernel(dist);
         nNbr[i]++;
-        // count++;
       }
+      // unnecessary points
       else{
-        d[i][j]=0;
+        buffer[j]=0;
       }
     }
-    // exit(1);
+
+    // malloc sparse matrix (w) rows
+    w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
+    if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
+
+    index = 0;
+    for (j=0; j<N; j++){
+      if (buffer[j] > 0){
+        w[i][index].j        = j;
+        w[i][index].distance = buffer[j]; 
+        index++;
+      }
+    }
   }
 }
 
-// a*b = c
-void cpu_matrix_mult(long double **result, long double **a, long double **b, const int ROW1, const int COL1, const int COL2) {
+void matrix_mult() {
   int i,j,k;
-  for(i=0; i<ROW1; i++){
-    for(j=0; j<COL2; j++){
-      result[i][j] = 0;
-      for(k=0; k<COL1; k++){
-          result[i][j] += a[i][k] * b[k][j];
-      }
+  for(i=0; i<N; i++){
+    for(j=0; j<D; j++){
+      y_new[i][j] = 0;
+      for(k=0; k<nNbr[i]; k++)
+          y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
     }
   }
 }
 
-void normalize(long double **a, const int ROW, const int COL){
+void normalize(){
   int i,j;
   long double s=0;
 
-  for (i=0;i<ROW;i++){
-    s = sum_of_row(d,i,N);
-    // printf("%Lf", s);
-    for (j=0; j<COL; j++)
-      a[i][j] = a[i][j]/s;       
+  for (i=0;i<N;i++){
+    s = sum_of_row(i);
+    for (j=0; j<D; j++)
+      y_new[i][j] /= s;       
   }
 }
 
-long double sum_of_row(long double **a, const int row_index, const int COL){
+long double sum_of_row(const int row_index){
   int j;
   long double sum=0;
-  for (j=0; j<COL; j++)
-    sum += a[row_index][j];
+  
+  for (j=0; j<nNbr[row_index]; j++)
+    sum += w[row_index][j].distance;
   return sum;
 }
 
-long double frob_norm(long double **a, const int ROW, const int COL) {
+long double frob_norm(){
   int i,j;
   long double norm=0;
-  for (i=0; i<ROW; i++)
-    for (j=0; j<COL; j++)
-      norm += a[i][j] * a[i][j];
+  for (i=0; i<N; i++)
+    for (j=0; j<D; j++)
+      norm += m[i][j] * m[i][j];
   return sqrt(norm);
 }
 
-void calc_meanshift(long double **result, long double **a, long double **b, const int ROW, const int COL){
+void calc_meanshift(){
   int i,j;
-  for (i=0;i<ROW;i++)
-    for (j=0; j<COL; j++)
-      result[i][j] = a[i][j] - b[i][j];       
+  for (i=0;i<N;i++)
+    for (j=0; j<D; j++)
+      m[i][j] = y_new[i][j] - y[i][j];       
 }
+
 void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++)
@@ -307,7 +296,6 @@ void print_2Darray(long double **a, const int ROW, const int COL){
   }
 }
 
-//  W = spfun( @(x) exp( -x / (2*h^2) ), W );
 long double gaussian_kernel(const long double dist){
     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
@@ -319,28 +307,3 @@ long double euclidean_distance(const int first, const int second){
     dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
   return dist;
 }
-
-/*typedef struct {
-    int i,j,distance;
-} SparseData;
-
-SparseData * sparse(long double * d, int data_num){
-
-  int i,j, index=0;
-
-  SparseData *w  = (SparseData *)malloc(data_num * sizeof(struct   SparseData));
-  if(w==NULL) {perror("Error: "); exit(1);}
-
-  for (i=0; i<N; i++){
-    for (j=0; j<N; j++){
-      if (d[i][j] > 0){
-        w[index]->i        = i;
-        w[index]->j        = j;
-        w[index]->distance = d[i][j]; 
-        index++;     
-      }
-    }
-  }
-  return w;
-
-}*/

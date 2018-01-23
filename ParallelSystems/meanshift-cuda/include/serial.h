@@ -7,35 +7,39 @@
 #include <float.h>
 #include <math.h>
 
+#include "../include/global_vars.h"
+#include "../include/serial.h"
+#include "../include/helpers.h"
 
-void serial();
+void serial(void);
 
-void init_serial();
+void init_serial(void);
 
-void memory_allocation();
+void memory_allocation(void);
 
-void read_file();
+void free_memory(void);
 
-void write_csv_file(char *message, long double **a, const int ROW, const int COL);
+void read_file(void);
 
-int validate();
+void write_csv_file (char *message, long double **a, const int ROW, const int COL);
 
-void init_arr();
+int validate(void);
 
-void meanshift();
+void init_arr(void);
 
-void rangesearch();
+void meanshift(void);
 
-void cpu_matrix_mult(long double **mult, long double **a, long double **b, 
-		const int ROW1, const int COL1, const int COL2);
+void rangesearch2sparse(void);
 
-void normalize(long double **a, const int ROW, const int COL);
+void matrix_mult(void);
 
-long double sum_of_row(long double **a, const int row, const int COL);
+void normalize(void);
 
-long double frob_norm(long double **a, const int ROW, const int COL) ;
+long double sum_of_row(const int row_index);
 
-void calc_meanshift(long double **a, long double **b, long double **c, const int ROW, const int COL);
+long double frob_norm(void);
+
+void calc_meanshift(void);
 
 void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL);
 
@@ -44,7 +48,5 @@ void print_2Darray(long double **a, const int ROW, const int COL);
 long double gaussian_kernel(const long double dist);
 
 long double euclidean_distance(const int first, const int second);
-
-long double euclidean_distance_sqr(const int first, const int second);
 
 #endif
