@@ -4,12 +4,14 @@
 
 int *nNbr;
 
-double **x;
-double **y;
-double **y_new;
-double **m;
-double **d;
+long double **x;
+long double **y;
+long double **y_new;
+long double **m;
+long double **d;
 int **id;
+
+// TODO: free()
 
 void serial(){
   printf("[INFO]: SERIAL IMPLEMENTATION\n");
@@ -26,7 +28,7 @@ void serial(){
   //------------------------------
   gettimeofday (&endwtime, NULL);
 
-  seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
+  seq_time = (long double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
   
   /*printf("\n\nIs test PASSed? %s\n\n", validate_serial()?"YES":"NO");
@@ -46,11 +48,11 @@ void memory_allocation(){
   if (VERBOSE) printf("[INFO]: Allocating memory\n");
 
   nNbr  = (int *)     malloc(N * sizeof(int));
-  x     = (double **) malloc(N * sizeof(double *));
-  y     = (double **) malloc(N * sizeof(double *));
-  y_new = (double **) malloc(N * sizeof(double *));
-  m     = (double **) malloc(N * sizeof(double *));
-  d     = (double **) malloc(N * sizeof(double *));
+  x     = (long double **) malloc(N * sizeof(long double *));
+  y     = (long double **) malloc(N * sizeof(long double *));
+  y_new = (long double **) malloc(N * sizeof(long double *));
+  m     = (long double **) malloc(N * sizeof(long double *));
+  d     = (long double **) malloc(N * sizeof(long double *));
   id    = (int **)    malloc(N * sizeof(int *));
 
   if( (nNbr == NULL) || (x == NULL) || (y == NULL) || 
@@ -61,11 +63,11 @@ void memory_allocation(){
   }
 
   for (i=0; i<N; i++) {
-    x[i]      = (double *) malloc(D * sizeof(double));
-    y[i]      = (double *) malloc(D * sizeof(double));
-    y_new[i]  = (double *) malloc(D * sizeof(double));
-    m[i]      = (double *) malloc(D * sizeof(double));
-    d[i]      = (double *) malloc(N * sizeof(double));
+    x[i]      = (long double *) malloc(D * sizeof(long double));
+    y[i]      = (long double *) malloc(D * sizeof(long double));
+    y_new[i]  = (long double *) malloc(D * sizeof(long double));
+    m[i]      = (long double *) malloc(D * sizeof(long double));
+    d[i]      = (long double *) malloc(N * sizeof(long double));
     id[i]     = (int *) malloc   (N * sizeof(int));
 
     if( (x[i] == NULL) || (y[i] == NULL) || (y_new[i] == NULL) || (m[i] == NULL) ) { 
@@ -74,6 +76,20 @@ void memory_allocation(){
     }
   }
 }
+
+/*void read_file_bin()
+{
+    FILE *f;
+    f = fopen(DATASET_PATH, "rb");
+    fseek(f, 0L, SEEK_END);
+    int pos = ftell(f);
+    fseek(f, 0L, SEEK_SET);
+
+    int number_elements = pos / sizeof(long double);
+    long double *x = (long double *) malloc(sizeof *x * number_elements);
+    int tmp = fread(x, sizeof *x, number_elements, f);
+    fclose(f);
+}*/
 
 void read_file(){
   int i,j;
@@ -85,15 +101,16 @@ void read_file(){
 
   for (i=0; i<N; i++) 
     for (j=0; j<D; j++){
-      if (EOF ==  fscanf(fp, "%lf", &x[i][j])) {
+      if (EOF ==  fscanf(fp, "%Lf", &x[i][j])) {
         perror("[ERROR]:"); exit(1);
       }
+      // x[i][j]/=10000;
     }
 
   fclose(fp);
 }
 
-void write_csv_file (char *message, double **a, const int ROW, const int COL){
+void write_csv_file (char *message, long double **a, const int ROW, const int COL){
   int i,j;
 
   FILE * fp;
@@ -105,7 +122,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
 
   for (i=0; i<ROW; i++) {
     for (j=0; j<COL; j++)
-      if (EOF ==  fprintf(fp, "%lf, ", a[i][j])) {
+      if (EOF ==  fprintf(fp, "%Lf, ", a[i][j])) {
         perror("[ERROR]:"); exit(1);
       }
     fprintf(fp,"\n");
@@ -118,7 +135,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
 // TODO
 int validate(){
   /*int i,j;
-  double tmp;
+  long double tmp;
 
   FILE * fp;
   fp = fopen (VALIDATION_PATH, "r");
@@ -126,12 +143,12 @@ int validate(){
 
   for (i=0; i<N; i++) {
     for (j=0; j<D; j++) {
-      if(EOF == fscanf(fp, "%lf", &tmp)) { perror("[ERROR]:"); exit(1);}
+      if(EOF == fscanf(fp, "%Lf", &tmp)) { perror("[ERROR]:"); exit(1);}
 
       if(!(fabs(tmp - k_dist[i][j]) < PRECISION)){
         printf("[INFO]: Validation failed:\n");
-        // printf("k_dist=%lf\n",k_dist[i][j]);
-        // printf("validate_tmp=%lf\n",tmp);
+        // printf("k_dist=%Lf\n",k_dist[i][j]);
+        // printf("validate_tmp=%Lf\n",tmp);
         // printf("i=%d j=%d\n",i,j);
         fclose(fp);
         return 0;
@@ -149,7 +166,9 @@ void init_arr(){
     nNbr[i] = 0;
     for (j=0; j<D; j++){
       y[i][j]  = x[i][j];
-      m[i][j]  = DBL_MAX;
+      m[i][j]  = LDBL_MAX;
+    }
+    for (j=0; j<N; j++){
       d[i][j]  = -1.0;
       id[i][j] = -1;
     }
@@ -159,142 +178,143 @@ void init_arr(){
 // Find the x points that are closer than EPSILON for each y point
 void meanshift(){
   int iter=0;
-  double norm = DBL_MAX;
+  long double norm = LDBL_MAX;
+
+  struct timeval startwtime, endwtime;
+  double seq_time;
   
-  // printf("HERE\n");
   init_arr();
 
   while (norm > EPSILON){
     iter++;
-    //find neighbours with BANDWIDTH
+
+//==========================================================================
+    // find distances between each row of y and the rows of x 
+    // that are BANDWIDTH or less distant.
+    // And calculate kernels for these distances.
     rangesearch();
-    // print_2Darray(d,1,N);
-    // write_csv_file("d test\n",d,N,N);
 
     // compute new y vector
-    cpu_matrix_mult(d,x,y_new,N,N,D);
-    
+    cpu_matrix_mult(y_new,d,x,N,N,D);
+
     // normalize vector
-    normalize(y_new,N,D);
+    normalize(y_new,N,D);    
 
     // calculate meanshift
-    calc_meanshift(y_new,y,m,N,D);
+    calc_meanshift(m,y_new,y,N,D);
 
-    //update y
+    // update y
     copy_2Darray(y_new, y,N,D);
 
-    norm = eucl_norm(m,N,D);
+    // calculate Frobenius norm
+    norm = frob_norm(m,N,D);
 
     if (VERBOSE){
-      printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
-      write_csv_file("y_new\n",y_new,N,D);
+      printf("[INFO]: Iteration %d - error %Lf\n", iter, norm);
     }
   }
 
+  // if (VERBOSE)  write_csv_file("",y_new,N,D);
 }
 
 
 void rangesearch(){
-  int i,j,count=0;
-  double dist;
-  // double **d;
+  int i,j;
+  long double dist;
 
-  // d = (double **) malloc(N * sizeof(double *));
-  // if(d==NULL) {perror("Error: "); exit(1);}
   for (i=0; i<N; i++){
-    // d[i] = (double *) malloc(N * sizeof(double)); //malloc rows
-    // if(d[i]==NULL) {perror("Error: "); exit(1);}
-
     for (j=0; j<N; j++){
       if (i==j) {d[i][j] = 1; continue;}
 
       dist = euclidean_distance(i,j);
-      if (dist<BANDWIDTH){
-        // printf("%lf \t",dist);
+
+      // (dist<BANDWIDTH*BANDWIDTH) ? (d[i][j]= gaussian_kernel(dist)) : (d[i][j]=0);
+      if (dist<BANDWIDTH*BANDWIDTH){
         d[i][j]= gaussian_kernel(dist);
         nNbr[i]++;
-        count++;
+        // count++;
       }
       else{
         d[i][j]=0;
       }
     }
+    // exit(1);
   }
 }
 
 // a*b = c
-void cpu_matrix_mult(double **a, double **b,double **c, const int ROW1, const int COL1, const int COL2) {
+void cpu_matrix_mult(long double **result, long double **a, long double **b, const int ROW1, const int COL1, const int COL2) {
   int i,j,k;
   for(i=0; i<ROW1; i++){
     for(j=0; j<COL2; j++){
-      c[i][j] = 0;
+      result[i][j] = 0;
       for(k=0; k<COL1; k++){
-          c[i][j] += a[i][k] * b[k][j];
+          result[i][j] += a[i][k] * b[k][j];
       }
     }
   }
 }
 
-void normalize(double **a, const int ROW, const int COL){
+void normalize(long double **a, const int ROW, const int COL){
   int i,j;
-  double s=0;
+  long double s=0;
 
   for (i=0;i<ROW;i++){
     s = sum_of_row(d,i,N);
-    // printf("%lf", s);
+    // printf("%Lf", s);
     for (j=0; j<COL; j++)
       a[i][j] = a[i][j]/s;       
   }
 }
 
-double sum_of_row(double **a, const int row, const int COL){
+long double sum_of_row(long double **a, const int row_index, const int COL){
   int j;
-  double sum=0;
+  long double sum=0;
   for (j=0; j<COL; j++)
-    sum += a[row][j];
+    sum += a[row_index][j];
   return sum;
 }
 
-double eucl_norm(double **a, const int ROW, const int COL) {
+long double frob_norm(long double **a, const int ROW, const int COL) {
   int i,j;
-  double norm=0;
+  long double norm=0;
   for (i=0; i<ROW; i++)
     for (j=0; j<COL; j++)
       norm += a[i][j] * a[i][j];
   return sqrt(norm);
 }
 
-void calc_meanshift(double **a, double **b, double **c, const int ROW, const int COL){
+void calc_meanshift(long double **result, long double **a, long double **b, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++)
     for (j=0; j<COL; j++)
-      c[i][j] = a[i][j] - b[i][j];       
+      result[i][j] = a[i][j] - b[i][j];       
 }
-void copy_2Darray(double **source, double **destination, const int ROW, const int COL){
+void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++)
     for (j=0; j<COL; j++)
       destination[i][j] = source[i][j];
 }
 
-void print_2Darray(double **a, const int ROW, const int COL){
+void print_2Darray(long double **a, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++){
     for (j=0; j<COL; j++){
-      printf("%lf \t",a[i][j]);
+      printf("%Lf \t",a[i][j]);
     }
   printf("\n");
   }
 }
 
 //  W = spfun( @(x) exp( -x / (2*h^2) ), W );
-double gaussian_kernel(const double dist){
-    return exp(-1.0/2.0 * dist / (BANDWIDTH*BANDWIDTH));
+long double gaussian_kernel(const long double dist){
+    return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
 
-double euclidean_distance(const int first, const int second){
+long double euclidean_distance(const int first, const int second){
   int j;
-  double dist = 0;
+  long double dist = 0;
   for (j=0; j<D; j++)
     dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
   return dist;
@@ -304,7 +324,7 @@ double euclidean_distance(const int first, const int second){
     int i,j,distance;
 } SparseData;
 
-SparseData * sparse(double * d, int data_num){
+SparseData * sparse(long double * d, int data_num){
 
   int i,j, index=0;
 

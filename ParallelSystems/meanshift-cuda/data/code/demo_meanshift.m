@@ -28,7 +28,7 @@ varL     = 'L';
 h = 1;
 optMeanShift.epsilon = 1e-4*h;
 optMeanShift.verbose = true;
-optMeanShift.display = true;
+optMeanShift.display = false;
 
 
 %% (BEGIN)
@@ -40,34 +40,39 @@ fprintf('\n *** begin %s ***\n\n',mfilename);
 
 fprintf('...reading data...\n')
 
-matFile = [basepath filesep filename '.mat']
+% matFile = [basepath filesep filename '.mat']
+% 
+% fprintf('   - file: %s...\n', matFile);
+% 
+% ioData = matfile( matFile );
+% 
+% x = ioData.(varX);
+% l = ioData.(varL);
+% 
+% figure('name', 'original_data')
+% scatter(x(:,1),x(:,2), 8, l);
 
-fprintf('   - file: %s...\n', matFile);
-
-ioData = matfile( matFile );
-
-x = ioData.(varX);
-l = ioData.(varL);
+x = csvread ('../S1.csv');
+h = 100000;
 
 figure('name', 'original_data')
-scatter(x(:,1),x(:,2), 8, l);
-
+scatter(x(:,1),x(:,2));
 
 %% PERFORM MEAN SHIFT
 
 fprintf('...computing mean shift...')
 
 tic;
-y = meanshift( x, h, optMeanShift );
+y = meanshift( x, h, optMeanShift);
 tElapsed = toc;
 
-fprintf('DONE in %.2f sec\n', tElapsed);
+fprintf('[FINAL]: DONE in %.2f sec\n', tElapsed);
 
 
 %% SHOW FINAL POSITIONS
 
 figure('name', 'final_local_maxima_points')
-scatter(y(:,1),y(:,2), 8, l);
+scatter(y(:,1),y(:,2));
 
 
 %% (END)

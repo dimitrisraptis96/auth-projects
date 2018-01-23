@@ -3,13 +3,13 @@
 
 
 #ifndef DATASET_PATH
-#define DATASET_PATH     "data/dataset.txt"
+#define DATASET_PATH     "data/S1.txt"
 #endif
 #ifndef VALIDATION_PATH
-#define VALIDATION_PATH  "data/matlab-files/validation_mnist_train_svd.txt"
+#define VALIDATION_PATH  "data/..."
 #endif
 #ifndef OUTPUT_PATH
-#define OUTPUT_PATH 	 "data/out.txt"
+#define OUTPUT_PATH 	 "data/out-S1.txt"
 #endif
 
 #ifndef VERBOSE
@@ -17,11 +17,11 @@
 #endif
 
 #ifndef EPSILON
-#define EPSILON 1e-4 * BANDWIDTH
+#define EPSILON 1e-4
 #endif
 
 #ifndef BANDWIDTH
-#define BANDWIDTH 1
+#define BANDWIDTH 100000.
 #endif
 
 #ifndef TYPE_CPU
@@ -36,11 +36,11 @@ extern int D;
 
 extern int *nNBr;
 
-extern double **x;
-extern double **y;
-extern double **y_new;
-extern double **m;
-extern double **d;
+extern long double **x;
+extern long double **y;
+extern long double **y_new;
+extern long double **m;
+extern long double **d;
 extern int **id;
 
 #endif

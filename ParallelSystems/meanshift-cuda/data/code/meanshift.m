@@ -78,10 +78,11 @@ function y = meanshift(x, h, varargin)
     set(fig, 'name', 'real_time_quiver')
   end
   
-  while norm(m) > opt.epsilon  % --- iterate unitl convergence
+  while norm(m,'fro') > opt.epsilon  % --- iterate unitl convergence
   
     iter = iter + 1;
     
+%     tic;
     % find pairwise distance matrix (inside radius)
     [I, D] = rangesearch( x, y, h );
     D      = cellfun( @(x) x.^2, D, 'UniformOutput', false );
@@ -93,6 +94,9 @@ function y = meanshift(x, h, varargin)
     
     % make sure diagonal elements are 1
     W = W + spdiags( ones(n,1), 0, n, n );
+%     tElapsed = toc;
+
+%     fprintf('DONE in %.2f sec\n', tElapsed);
     
     % compute new y vector
     y_new = W * x;
@@ -120,11 +124,11 @@ function y = meanshift(x, h, varargin)
     y = y_new;
     
     if opt.verbose
-      fprintf( ' Iteration %d - error %.2g\n', iter, norm(m) );
+      fprintf( ' Iteration %d - error %.2g\n', iter, norm(m,'fro') );
     end    
     
   end % while (m > epsilon)
-  y
+  y;
     
 end
   

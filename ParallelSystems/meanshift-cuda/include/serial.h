@@ -16,7 +16,7 @@ void memory_allocation();
 
 void read_file();
 
-void write_csv_file(char *message, double **a, const int ROW, const int COL);
+void write_csv_file(char *message, long double **a, const int ROW, const int COL);
 
 int validate();
 
@@ -26,25 +26,25 @@ void meanshift();
 
 void rangesearch();
 
-void cpu_matrix_mult(double **a, double **b,double **c, 
+void cpu_matrix_mult(long double **mult, long double **a, long double **b, 
 		const int ROW1, const int COL1, const int COL2);
 
-void normalize(double **a, const int ROW, const int COL);
+void normalize(long double **a, const int ROW, const int COL);
 
-double sum_of_row(double **a, const int row, const int COL);
+long double sum_of_row(long double **a, const int row, const int COL);
 
-double eucl_norm(double **a, const int ROW, const int COL) ;
+long double frob_norm(long double **a, const int ROW, const int COL) ;
 
-void calc_meanshift(double **a, double **b, double **c, const int ROW, const int COL);
+void calc_meanshift(long double **a, long double **b, long double **c, const int ROW, const int COL);
 
-void copy_2Darray(double **source, double **destination, const int ROW, const int COL);
+void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL);
 
-void print_2Darray(double **a, const int ROW, const int COL);
+void print_2Darray(long double **a, const int ROW, const int COL);
 
-double gaussian_kernel(const double dist);
+long double gaussian_kernel(const long double dist);
 
-double euclidean_distance(const int first, const int second);
+long double euclidean_distance(const int first, const int second);
 
-double euclidean_distance_sqr(const int first, const int second);
+long double euclidean_distance_sqr(const int first, const int second);
 
 #endif
