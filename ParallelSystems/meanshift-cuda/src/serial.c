@@ -2,13 +2,14 @@
 #include "../include/serial.h"
 #include "../include/helpers.h"
 
+// TODO: inline optimization
+
 int *nNbr;
 
 long double **x;
 long double **y;
 long double **y_new;
 long double **m;
-int *nNbr;
 
 typedef struct {
     int j;
@@ -18,7 +19,7 @@ typedef struct {
 SparseData **w;
 
 void serial(){
-  printf("[INFO]: SERIAL IMPLEMENTATION\n");
+  printf("[INFO]: SERIAL-CPU IMPLEMENTATION\n");
   printf("=============================\n");
 
   struct timeval startwtime, endwtime;
@@ -59,8 +60,8 @@ void memory_allocation(){
   w     = (SparseData **)  malloc(N * sizeof(SparseData *));
   nNbr  = (int *)          malloc(N * sizeof(int));
 
-  if ( (nNbr == NULL)  || (x == NULL) || (y == NULL) || 
-      (y_new == NULL) || (m == NULL) || (w==NULL) ) { 
+  if (  (nNbr == NULL)  || (x == NULL) || (y == NULL) || 
+        (y_new == NULL) || (m == NULL) || (w==NULL) ) { 
     perror("[ERROR]:"); exit(1);
   }
 
@@ -279,7 +280,11 @@ void calc_meanshift(){
       m[i][j] = y_new[i][j] - y[i][j];       
 }
 
-void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL){
+void copy_2Darray(long double **source, 
+                  long double **destination, 
+                  const int ROW, 
+                  const int COL)
+{
   int i,j;
   for (i=0;i<ROW;i++)
     for (j=0; j<COL; j++)
