@@ -1,12 +1,13 @@
-CC=gcc
+CC=nvcc
 
 SRCDIR=src
 BUILDDIR=build
 TARGET=bin/main
 
 SRCEXT := c
-SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
+SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT)*)
+# OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)*=.o))
+OBJECTS := $(SOURCES:.c*=.o)
 
 CFLAGS=-g -O4 -Wall -lm
 INC := -I include
@@ -22,7 +23,3 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 
 clean:
 	$(RM) -r $(BUILDDIR) $(TARGET)
-
-	# all:
-# 	mpicc -Wall -Werror -o ./bin/no_block ./src/no_block.c 
-

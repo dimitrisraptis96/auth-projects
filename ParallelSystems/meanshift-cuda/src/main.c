@@ -56,7 +56,7 @@ void choose_type(){
       serial();
       break;
     case TYPE_GPU:
-      // parallel();
+      parallel();
       break;
     default:
       printf("[ERROR]: TYPE error\n");

@@ -5,13 +5,17 @@
 // TODO: prepare_gpu()
 // TODO: malloc continuous memory !!!
 
+__global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data);
+void cuda_error_handler(cudaError_t err);
+
 typedef struct {
     int j;
     long double distance;
 } SparseData;
 
 // host copies
-  long double ** x,y;
+  long double **x, **y;
+  long double *x_data, *y_data;
 
 // device copies
   long double ** d_x,d_y,d_y_new,d_m;
@@ -27,7 +31,7 @@ void parallel(){
   struct timeval startwtime, endwtime;
   double seq_time;
 
-  init_prallel();
+  init_parallel();
   
   gettimeofday (&startwtime, NULL);
   //------------------------------
@@ -72,8 +76,8 @@ void cpu_malloc(){
   if (x == NULL || y == NULL) {perror("[ERROR]:"); exit(1);} 
 
   // malloc data of the arrays
-  x_data      = malloc(N * D * sizeof(long double));
-  y_data      = malloc(N * D * sizeof(long double));
+  x_data      = (long double *) malloc(N * D * sizeof(long double));
+  y_data      = (long double *) malloc(N * D * sizeof(long double));
 
   if(x_data == NULL || y_data == NULL) {perror("[ERROR]:"); exit(1);}
 
@@ -169,17 +173,6 @@ void write_csv_file (char *message, long double **a, const int ROW, const int CO
   fclose(fp);
 }
 
-void init_arr(){
-  int i,j;
-  for (i=0; i<N; i++){
-    nNbr[i] = 0;
-    for (j=0; j<D; j++){
-      y[i][j]  = x[i][j];
-      m[i][j]  = LDBL_MAX;
-    }
-  }
-}
-
 __global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data)
 {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -212,9 +205,9 @@ void meanshift(){
   int nblocks, nthreads;
   long double norm = LDBL_MAX;
 
-  init_arr <<<N/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>> (d_nNbr, d_y, d_m); ///not ready!!!!!!!!
+  init_arr <<<10, 10>>> (d_nNbr, d_y, d_m); ///not ready!!!!!!!!
 
-  while (norm > EPSILON){
+  /*while (norm > EPSILON){
     iter++;
 
     // find distances between each row of y and the rows of x that are BANDWIDTH or less distant.
@@ -240,177 +233,177 @@ void meanshift(){
       printf("[INFO]: Iteration %d - error %Lf\n", iter, norm);
     }
   } 
-  if (VERBOSE)  write_csv_file("",y_new,N,D);
+  if (VERBOSE)  write_csv_file("",y_new,N,D);*/
   
   free_memory();
 }
 
 
-void rangesearch2sparse(){
-  int i,j, index;
-  long double dist;
+// void rangesearch2sparse(){
+//   int i,j, index;
+//   long double dist;
 
-  // malloc buffer for sparse matrix's rows
-  long double *buffer = (long double *) malloc(N*sizeof(long double));
-  if(buffer == NULL) { perror("[ERROR]:");exit(1); }
+//   // malloc buffer for sparse matrix's rows
+//   long double *buffer = (long double *) malloc(N*sizeof(long double));
+//   if(buffer == NULL) { perror("[ERROR]:");exit(1); }
 
-  for (i=0; i<N; i++){
-    for (j=0; j<N; j++){
-      // make sure diagonal elements are 1
-      if (i==j) {
-        buffer[j] = 1; nNbr[i]++; 
-        continue;
-      }
+//   for (i=0; i<N; i++){
+//     for (j=0; j<N; j++){
+//       // make sure diagonal elements are 1
+//       if (i==j) {
+//         buffer[j] = 1; nNbr[i]++; 
+//         continue;
+//       }
 
-      // find distances inside radius
-      dist = euclidean_distance(i,j);
-      if (dist < BANDWIDTH*BANDWIDTH){  // radius^2 because I don't use sqrt() at dist
-        buffer[j]= gaussian_kernel(dist);
-        nNbr[i]++;
-      }
-      // unnecessary points
-      else{
-        buffer[j]=0;
-      }
-    }
+//       // find distances inside radius
+//       dist = euclidean_distance(i,j);
+//       if (dist < BANDWIDTH*BANDWIDTH){  // radius^2 because I don't use sqrt() at dist
+//         buffer[j]= gaussian_kernel(dist);
+//         nNbr[i]++;
+//       }
+//       // unnecessary points
+//       else{
+//         buffer[j]=0;
+//       }
+//     }
 
-    // malloc sparse matrix (w) rows
-    w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
-    if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
+//     // malloc sparse matrix (w) rows
+//     w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
+//     if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
 
-    index = 0;
-    for (j=0; j<N; j++){
-      if (buffer[j] > 0){
-        w[i][index].j        = j;
-        w[i][index].distance = buffer[j]; 
-        index++;
-      }
-    }
-  }
-}
+//     index = 0;
+//     for (j=0; j<N; j++){
+//       if (buffer[j] > 0){
+//         w[i][index].j        = j;
+//         w[i][index].distance = buffer[j]; 
+//         index++;
+//       }
+//     }
+//   }
+// }
 
-/*__global__ void matrix_mult(int *d_nNbr, long double **d_y_new, SparseData **d_w)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int idy = blockIdx.y * blockDim.y + threadIdx.y;
-  int k;
+// /*__global__ void matrix_mult(int *d_nNbr, long double **d_y_new, SparseData **d_w)
+// {
+//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
+//   int k;
 
-  if((idx < N) && (idy < D)) {
-    y_new[idx][idy] = 0;
-    for(k=0; k<d_nNbr[i]; k++)
-        d_y_new[idx][idy] += d+w[idx][k].distance * x[ w[idx][k].j ][idy];
-  }
-}*/
+//   if((idx < N) && (idy < D)) {
+//     y_new[idx][idy] = 0;
+//     for(k=0; k<d_nNbr[i]; k++)
+//         d_y_new[idx][idy] += d+w[idx][k].distance * x[ w[idx][k].j ][idy];
+//   }
+// }*/
 
-void matrix_mult() {
-  int i,j,k;
-  for(i=0; i<N; i++){
-    for(j=0; j<D; j++){
-      y_new[i][j] = 0;
-      for(k=0; k<nNbr[i]; k++)
-          y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
-    }
-  }
-}
+// void matrix_mult() {
+//   int i,j,k;
+//   for(i=0; i<N; i++){
+//     for(j=0; j<D; j++){
+//       y_new[i][j] = 0;
+//       for(k=0; k<nNbr[i]; k++)
+//           y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
+//     }
+//   }
+// }
 
-/*__global__ void normalize(int *d_nNbr, long double **d_y_new, SparseData **d_w)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int idy = blockIdx.y * blockDim.y + threadIdx.y;
-  long double sum=0;  //shared within block for optimization
+// /*__global__ void normalize(int *d_nNbr, long double **d_y_new, SparseData **d_w)
+// {
+//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
+//   long double sum=0;  //shared within block for optimization
 
-  if((idx < N) && (idy < D)) {
-    if (threadIdx.x == 0) sum = sum_of_row(i);
-    d_y_new[idx][idy] /= sum;
-  }
-}*/
+//   if((idx < N) && (idy < D)) {
+//     if (threadIdx.x == 0) sum = sum_of_row(i);
+//     d_y_new[idx][idy] /= sum;
+//   }
+// }*/
 
-/*
-__device__ long double sum_of_row(const int row_index){
-  // TODO call this from device
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  long double sum=0;
+
+// __device__ long double sum_of_row(const int row_index){
+//   // TODO call this from device
+//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   long double sum=0;
   
-  if(idx < nNbr[row_index])
-    sum += w[row_index][j].distance;
-  __synchronized //wait all threads to sum the
-  return sum; // make sure it returns the correct sum
-}*/
+//   if(idx < nNbr[row_index])
+//     sum += w[row_index][j].distance;
+//   __synchronized //wait all threads to sum the
+//   return sum; // make sure it returns the correct sum
+// }
 
-void normalize(){
-  int i,j;
-  long double s=0;
+// void normalize(){
+//   int i,j;
+//   long double s=0;
 
-  for (i=0;i<N;i++){
-    s = sum_of_row(i);
-    for (j=0; j<D; j++)
-      y_new[i][j] /= s;       
-  }
-}
+//   for (i=0;i<N;i++){
+//     s = sum_of_row(i);
+//     for (j=0; j<D; j++)
+//       y_new[i][j] /= s;       
+//   }
+// }
 
-long double sum_of_row(const int row_index){
-  int j;
-  long double sum=0;
+// long double sum_of_row(const int row_index){
+//   int j;
+//   long double sum=0;
   
-  for (j=0; j<nNbr[row_index]; j++)
-    sum += w[row_index][j].distance;
-  return sum;
-}
+//   for (j=0; j<nNbr[row_index]; j++)
+//     sum += w[row_index][j].distance;
+//   return sum;
+// }
 
-/*__global__ long double frob_norm(int *d_nNbr, long double **d_y_new, SparseData **d_w)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int idy = blockIdx.y * blockDim.y + threadIdx.y;
-  long double sum=0;  //shared within block for optimization
+// /*__global__ long double frob_norm(int *d_nNbr, long double **d_y_new, SparseData **d_w)
+// {
+//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
+//   long double sum=0;  //shared within block for optimization
 
-  if((idx < N) && (idy < D)) {
-    if (threadIdx.x == 0) sum = sum_of_row(i);
-    d_y_new[idx][idy] /= sum;
-  }
-}*/
+//   if((idx < N) && (idy < D)) {
+//     if (threadIdx.x == 0) sum = sum_of_row(i);
+//     d_y_new[idx][idy] /= sum;
+//   }
+// }*/
 
 
-long double frob_norm(){
-  int i,j;
-  long double norm=0;
-  for (i=0; i<N; i++)
-    for (j=0; j<D; j++)
-      norm += m[i][j] * m[i][j];
-  return sqrt(norm);
-}
+// long double frob_norm(){
+//   int i,j;
+//   long double norm=0;
+//   for (i=0; i<N; i++)
+//     for (j=0; j<D; j++)
+//       norm += m[i][j] * m[i][j];
+//   return sqrt(norm);
+// }
 
-void calc_meanshift(){
-  int i,j;
-  for (i=0;i<N;i++)
-    for (j=0; j<D; j++)
-      m[i][j] = y_new[i][j] - y[i][j];       
-}
+// void calc_meanshift(){
+//   int i,j;
+//   for (i=0;i<N;i++)
+//     for (j=0; j<D; j++)
+//       m[i][j] = y_new[i][j] - y[i][j];       
+// }
 
-void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL){
-  int i,j;
-  for (i=0;i<ROW;i++)
-    for (j=0; j<COL; j++)
-      destination[i][j] = source[i][j];
-}
+// void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL){
+//   int i,j;
+//   for (i=0;i<ROW;i++)
+//     for (j=0; j<COL; j++)
+//       destination[i][j] = source[i][j];
+// }
 
-void print_2Darray(long double **a, const int ROW, const int COL){
-  int i,j;
-  for (i=0;i<ROW;i++){
-    for (j=0; j<COL; j++){
-      printf("%Lf \t",a[i][j]);
-    }
-  printf("\n");
-  }
-}
+// void print_2Darray(long double **a, const int ROW, const int COL){
+//   int i,j;
+//   for (i=0;i<ROW;i++){
+//     for (j=0; j<COL; j++){
+//       printf("%Lf \t",a[i][j]);
+//     }
+//   printf("\n");
+//   }
+// }
 
-long double gaussian_kernel(const long double dist){
-    return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
-}
+// long double gaussian_kernel(const long double dist){
+//     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
+// }
 
-long double euclidean_distance(const int first, const int second){
-  int j;
-  long double dist = 0;
-  for (j=0; j<D; j++)
-    dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
-  return dist;
-}
+// long double euclidean_distance(const int first, const int second){
+//   int j;
+//   long double dist = 0;
+//   for (j=0; j<D; j++)
+//     dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
+//   return dist;
+// }
