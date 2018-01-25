@@ -5,7 +5,8 @@
 // TODO: prepare_gpu()
 // TODO: malloc continuous memory !!!
 
-__global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data);
+__global__ 
+void init_arr(int *d_nNbr,long double *d_x_data, long double *d_y_data, long double *d_m_data);
 void cuda_error_handler(cudaError_t err);
 
 typedef struct {
@@ -18,12 +19,14 @@ typedef struct {
   long double *x_data, *y_data;
 
 // device copies
-  long double ** d_x,d_y,d_y_new,d_m;
-  long double *  d_x_data, d_y_data, d_y_new_data, d_m_data;
+  long double **d_x,**d_y,**d_y_new,**d_m;
+  long double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data;
   int *d_nNbr;
-  SparseData **d_w;   
+  SparseData **d_w;  
+  int *limit; 
 
 
+extern "C"
 void parallel(){
   printf("[INFO]: CUDA-GPU IMPLEMENTATION\n");
   printf("=============================\n");
@@ -44,7 +47,7 @@ void parallel(){
 
   /*printf("\n\nIs test PASSed? %s\n\n", validate_parallel()?"YES":"NO");
   printf("===============================================\n\n");*/
-  printf("\n\n[INFO]:Serial meanshift wall clock time = %f\n", seq_time);
+  printf("\n\n[INFO]: Parallel meanshift wall clock time = %f\n", seq_time);
 
 }
 
@@ -67,7 +70,7 @@ void init_parallel(){
 void cpu_malloc(){
   int i;
   
-  if(VERBOSE) printf("[INFO]: Allocating contiguous memory..\n");
+  if(VERBOSE) printf("[INFO]: Allocating cpu memory..\n");
 
   // malloc pointers to rows 
   x     = (long double **) malloc(N * sizeof(long double *));
@@ -93,31 +96,40 @@ void cpu_malloc(){
 void gpu_malloc (){
   int size; 
 
+  if(VERBOSE) printf("[INFO]: Allocating device memory..\n");
+  
   // malloc pointers of rows
   size = N * sizeof(long double *);
-  cuda_error_handler( cudaMalloc(&d_x,    size) );
-  cuda_error_handler( cudaMalloc(&d_y,    size) );
-  cuda_error_handler( cudaMalloc(&d_y_new,size) );
-  cuda_error_handler( cudaMalloc(&d_m,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_x,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_y,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_y_new,size) );
+  cuda_error_handler( cudaMalloc((void**)&d_m,    size) );
 
   // malloc data of the arrays
   size = N * D * sizeof(long double);
-  cuda_error_handler( cudaMalloc(&d_x_data,    size) );
-  cuda_error_handler( cudaMalloc(&d_y_data,    size) );
-  cuda_error_handler( cudaMalloc(&d_y_new_data,size) );
-  cuda_error_handler( cudaMalloc(&d_m_data,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_x_data,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_y_data,    size) );
+  cuda_error_handler( cudaMalloc((void**)&d_y_new_data,size) );
+  cuda_error_handler( cudaMalloc((void**)&d_m_data,    size) );
 
   //malloc nNbr
   size = N * sizeof(int);
-  cuda_error_handler( cudaMalloc(&d_nNbr, size) );
+  cuda_error_handler( cudaMalloc((void**)&d_nNbr, size) );
 
   //malloc w indexes of rows
   size = N * sizeof(SparseData *);
-  cuda_error_handler( cudaMalloc(&d_w, size) );
+  cuda_error_handler( cudaMalloc((void**)&d_w, size) );
+
+  // int value
+  size = sizeof(int);
+  cuda_error_handler( cudaMalloc((void**)&limit, size) );
 }
 
 void move_data_to_gpu(){
   int size;
+
+  if(VERBOSE) printf("[INFO]: Move data to device..\n");
+
   size = N * sizeof(long double *);
   cuda_error_handler( cudaMemcpy(d_x,       x,      size,  cudaMemcpyHostToDevice) );
   size = N * D * sizeof(long double);
@@ -173,16 +185,21 @@ void write_csv_file (char *message, long double **a, const int ROW, const int CO
   fclose(fp);
 }
 
-__global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data)
+__global__ 
+void init_arr(int *limit, 
+              int *d_nNbr, 
+              long double *d_x_data, 
+              long double *d_y_data, 
+              long double *d_m_data)
 {
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   
   // TODO: shared memory: the data within the block
 
-  if (id < N*D) {
+  if (id < 100) {
     d_nNbr[id] = 0; // can be optized
     d_y_data[id] = d_x_data[id];
-    d_m_data[id] = LDMX_MAX;
+    d_m_data[id] = LDBL_MAX;
   }
 }
 
@@ -205,7 +222,9 @@ void meanshift(){
   int nblocks, nthreads;
   long double norm = LDBL_MAX;
 
-  init_arr <<<10, 10>>> (d_nNbr, d_y, d_m); ///not ready!!!!!!!!
+  init_arr <<<10, 10>>> (limit, d_nNbr, d_x_data, d_y_data, d_m_data); ///not ready!!!!!!!!
+
+
 
   /*while (norm > EPSILON){
     iter++;
@@ -235,7 +254,7 @@ void meanshift(){
   } 
   if (VERBOSE)  write_csv_file("",y_new,N,D);*/
   
-  free_memory();
+  // free_memory();
 }
 
 

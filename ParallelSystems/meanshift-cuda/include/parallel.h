@@ -15,7 +15,7 @@
 // __global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data);
 // void cuda_error_handler(cudaError_t err);
 
-void parallel();
+// extern "C" void parallel();
 void init_parallel();
 void cpu_malloc();
 void gpu_malloc ();
