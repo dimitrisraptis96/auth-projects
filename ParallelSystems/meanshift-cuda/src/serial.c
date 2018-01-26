@@ -6,14 +6,14 @@
 
 int *nNbr;
 
-long double **x;
-long double **y;
-long double **y_new;
-long double **m;
+double **x;
+double **y;
+double **y_new;
+double **m;
 
 typedef struct {
     int j;
-    long double distance;
+    double distance;
 } SparseData;
 
 SparseData **w;
@@ -33,7 +33,7 @@ void serial(){
   //------------------------------
   gettimeofday (&endwtime, NULL);
 
-  seq_time = (long double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
+  seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
 
   /*printf("\n\nIs test PASSed? %s\n\n", validate_serial()?"YES":"NO");
@@ -53,10 +53,10 @@ void memory_allocation(){
   
   if (VERBOSE) printf("[INFO]: Allocating memory...\n");
 
-  x     = (long double **) malloc(N * sizeof(long double *));
-  y     = (long double **) malloc(N * sizeof(long double *));
-  y_new = (long double **) malloc(N * sizeof(long double *));
-  m     = (long double **) malloc(N * sizeof(long double *));
+  x     = (double **) malloc(N * sizeof(double *));
+  y     = (double **) malloc(N * sizeof(double *));
+  y_new = (double **) malloc(N * sizeof(double *));
+  m     = (double **) malloc(N * sizeof(double *));
   w     = (SparseData **)  malloc(N * sizeof(SparseData *));
   nNbr  = (int *)          malloc(N * sizeof(int));
 
@@ -66,10 +66,10 @@ void memory_allocation(){
   }
 
   for (i=0; i<N; i++) {
-    x[i]      = (long double *) malloc(D * sizeof(long double));
-    y[i]      = (long double *) malloc(D * sizeof(long double));
-    y_new[i]  = (long double *) malloc(D * sizeof(long double));
-    m[i]      = (long double *) malloc(D * sizeof(long double));
+    x[i]      = (double *) malloc(D * sizeof(double));
+    y[i]      = (double *) malloc(D * sizeof(double));
+    y_new[i]  = (double *) malloc(D * sizeof(double));
+    m[i]      = (double *) malloc(D * sizeof(double));
 
     if( (x[i] == NULL) || (y[i] == NULL) || (y_new[i] == NULL) || (m[i] == NULL) ) { 
       perror("[ERROR]:"); exit(1);
@@ -107,12 +107,12 @@ void read_file(){
 
   for (i=0; i<N; i++) 
     for (j=0; j<D; j++)
-      if (EOF ==  fscanf(fp, "%Lf", &x[i][j])) { perror("[ERROR]:"); exit(1); }
+      if (EOF ==  fscanf(fp, "%lf", &x[i][j])) { perror("[ERROR]:"); exit(1); }
 
   fclose(fp);
 }
 
-void write_csv_file (char *message, long double **a, const int ROW, const int COL){
+void write_csv_file (char *message, double **a, const int ROW, const int COL){
   int i,j;
 
   FILE * fp;
@@ -124,7 +124,7 @@ void write_csv_file (char *message, long double **a, const int ROW, const int CO
 
   for (i=0; i<ROW; i++) {
     for (j=0; j<COL; j++)
-      if (EOF ==  fprintf(fp, "%Lf, ", a[i][j])) {
+      if (EOF ==  fprintf(fp, "%lf, ", a[i][j])) {
         perror("[ERROR]:"); exit(1);
       }
     fprintf(fp,"\n");
@@ -153,7 +153,7 @@ void init_arr(){
 
 void meanshift(){
   int iter=0;
-  long double norm = LDBL_MAX;
+  double norm = LDBL_MAX;
 
   init_arr();
 
@@ -181,7 +181,7 @@ void meanshift(){
     norm = frob_norm();
 
     if (VERBOSE){
-      printf("[INFO]: Iteration %d - error %Lf\n", iter, norm);
+      printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
     }
   } 
   if (VERBOSE)  write_csv_file("",y_new,N,D);
@@ -192,10 +192,10 @@ void meanshift(){
 
 void rangesearch2sparse(){
   int i,j, index;
-  long double dist;
+  double dist;
 
   // malloc buffer for sparse matrix's rows
-  long double *buffer = (long double *) malloc(N*sizeof(long double));
+  double *buffer = (double *) malloc(N*sizeof(double));
   if(buffer == NULL) { perror("[ERROR]:");exit(1); }
 
   for (i=0; i<N; i++){
@@ -246,7 +246,7 @@ void matrix_mult() {
 
 void normalize(){
   int i,j;
-  long double s=0;
+  double s=0;
 
   for (i=0;i<N;i++){
     s = sum_of_row(i);
@@ -255,18 +255,18 @@ void normalize(){
   }
 }
 
-long double sum_of_row(const int row_index){
+double sum_of_row(const int row_index){
   int j;
-  long double sum=0;
+  double sum=0;
   
   for (j=0; j<nNbr[row_index]; j++)
     sum += w[row_index][j].distance;
   return sum;
 }
 
-long double frob_norm(){
+double frob_norm(){
   int i,j;
-  long double norm=0;
+  double norm=0;
   for (i=0; i<N; i++)
     for (j=0; j<D; j++)
       norm += m[i][j] * m[i][j];
@@ -280,8 +280,8 @@ void calc_meanshift(){
       m[i][j] = y_new[i][j] - y[i][j];       
 }
 
-void copy_2Darray(long double **source, 
-                  long double **destination, 
+void copy_2Darray(double **source, 
+                  double **destination, 
                   const int ROW, 
                   const int COL)
 {
@@ -291,23 +291,23 @@ void copy_2Darray(long double **source,
       destination[i][j] = source[i][j];
 }
 
-void print_2Darray(long double **a, const int ROW, const int COL){
+void print_2Darray(double **a, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++){
     for (j=0; j<COL; j++){
-      printf("%Lf \t",a[i][j]);
+      printf("%lf \t",a[i][j]);
     }
   printf("\n");
   }
 }
 
-long double gaussian_kernel(const long double dist){
+double gaussian_kernel(const double dist){
     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
 
-long double euclidean_distance(const int first, const int second){
+double euclidean_distance(const int first, const int second){
   int j;
-  long double dist = 0;
+  double dist = 0;
   for (j=0; j<D; j++)
     dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
   return dist;

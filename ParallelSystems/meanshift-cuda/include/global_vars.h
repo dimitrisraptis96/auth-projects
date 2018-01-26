@@ -36,11 +36,11 @@ extern int D;
 
 extern int *nNBr;
 
-extern long double **x;
-extern long double **y;
-extern long double **y_new;
-extern long double **m;
-extern long double **d;
+extern double **x;
+extern double **y;
+extern double **y_new;
+extern double **m;
+extern double **d;
 extern int **id;
 
 #endif

@@ -12,7 +12,7 @@
 #include <math.h>
 
 
-// __global__ void init_arr(int *d_nNbr, long double **d_y_data, long double **d_m_data);
+// __global__ void init_arr(int *d_nNbr, double **d_y_data, double **d_m_data);
 // void cuda_error_handler(cudaError_t err);
 
 // extern "C" void parallel();
@@ -22,17 +22,17 @@ void gpu_malloc ();
 void move_data_to_gpu();
 void free_memory();
 void read_file();
-void write_csv_file (char *message, long double **a, const int ROW, const int COL);
+void write_csv_file (char *message, double **a, const int ROW, const int COL);
 void meanshift();
 void rangesearch2sparse();
 void matrix_mult();
 void normalize();
-long double sum_of_row(const int row_index);
-long double frob_norm();
+double sum_of_row(const int row_index);
+double frob_norm();
 void calc_meanshift();
-void copy_2Darray(long double **source, long double **destination, const int ROW, const int COL);
-void print_2Darray(long double **a, const int ROW, const int COL);
-long double gaussian_kernel(const long double dist);
-long double euclidean_distance(const int first, const int second);
+void copy_2Darray(double **source, double **destination, const int ROW, const int COL);
+void print_2Darray(double **a, const int ROW, const int COL);
+double gaussian_kernel(const double dist);
+double euclidean_distance(const int first, const int second);
 
 #endif
