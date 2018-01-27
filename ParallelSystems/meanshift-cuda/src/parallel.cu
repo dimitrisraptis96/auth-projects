@@ -8,7 +8,7 @@ __device__ __constant__ int D_SIZE;
 
 // grid and block sizes
 const int threads_per_block = 256;
-const int blocks_per_grid  = MIN(32, (N+threads_per_block-1) / threads_per_block);
+const int blocks_per_grid  =32;
 
 typedef struct {
     int j;
@@ -25,6 +25,8 @@ double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data;
 int *d_nNbr;
 SparseData **d_w; 
 
+__global__ void dev_matrix_mult(int *d_nNbr, double *d_x_data, double *d_y_new, SparseData **d_w);
+__global__ void normalize(int *d_nNbr, double *d_y_new_data, SparseData **d_w);
 
 extern "C"
 void parallel(){
@@ -280,109 +282,66 @@ void meanshift(){
 //   }
 // }
 
-// /*__global__ void matrix_mult(int *d_nNbr, double **d_y_new, SparseData **d_w)
-// {
-//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
-//   int k;
+__global__ void dev_matrix_mult(int *d_nNbr, double *d_x_data, double *devynewdata, SparseData **d_w)
+{
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int k, offset;
 
-//   if((idx < N) && (idy < D)) {
-//     y_new[idx][idy] = 0;
-//     for(k=0; k<d_nNbr[i]; k++)
-//         d_y_new[idx][idy] += d+w[idx][k].distance * x[ w[idx][k].j ][idy];
-//   }
-// }*/
+  while(id < N_SIZE*D_SIZE){
+    offset = (id/N_SIZE) * N_SIZE;
+    devynewdata[id] = 0;
+    for(k=0; k<d_nNbr[id%N_SIZE]; k++)
+      devynewdata[id] += d_w[id%N_SIZE][k].distance * d_x_data[ d_w[id%N_SIZE][k].j+offset ];  
+    id += blockDim.x*gridDim.x;
+  }
+}
 
-// void matrix_mult() {
-//   int i,j,k;
-//   for(i=0; i<N; i++){
-//     for(j=0; j<D; j++){
-//       y_new[i][j] = 0;
-//       for(k=0; k<nNbr[i]; k++)
-//           y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
-//     }
-//   }
-// }
+__global__ void normalize(int *d_nNbr, double *d_y_new_data, SparseData **d_w)
+{
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  double sum=1;  //shared within block for optimization
 
-// /*__global__ void normalize(int *d_nNbr, double **d_y_new, SparseData **d_w)
-// {
-//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
-//   double sum=0;  //shared within block for optimization
-
-//   if((idx < N) && (idy < D)) {
-//     if (threadIdx.x == 0) sum = sum_of_row(i);
-//     d_y_new[idx][idy] /= sum;
-//   }
-// }*/
+  while(id < N_SIZE*D_SIZE) {
+    for (int j=0;j<d_nNbr[id&N_SIZE];j++){
+      sum += d_w[id&N_SIZE][j].distance; 
+    }
+    d_y_new_data[id] /= sum;
+    id += gridDim.x*blockDim.x;
+  }
+}
 
 
-// __device__ double sum_of_row(const int row_index){
-//   // TODO call this from device
-//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   double sum=0;
+__device__ double sum_of_row(const int row_index, int *d_nNbr, SparseData **d_w){
+  // TODO call this from device
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  double sum=0;
   
-//   if(idx < nNbr[row_index])
-//     sum += w[row_index][j].distance;
-//   __synchronized //wait all threads to sum the
-//   return sum; // make sure it returns the correct sum
-// }
-
-// void normalize(){
-//   int i,j;
-//   double s=0;
-
-//   for (i=0;i<N;i++){
-//     s = sum_of_row(i);
-//     for (j=0; j<D; j++)
-//       y_new[i][j] /= s;       
-//   }
-// }
-
-// double sum_of_row(const int row_index){
-//   int j;
-//   double sum=0;
-  
-//   for (j=0; j<nNbr[row_index]; j++)
-//     sum += w[row_index][j].distance;
-//   return sum;
-// }
-
-// /*__global__ double frob_norm(int *d_nNbr, double **d_y_new, SparseData **d_w)
-// {
-//   int idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   int idy = blockIdx.y * blockDim.y + threadIdx.y;
-//   double sum=0;  //shared within block for optimization
-
-//   if((idx < N) && (idy < D)) {
-//     if (threadIdx.x == 0) sum = sum_of_row(i);
-//     d_y_new[idx][idy] /= sum;
-//   }
-// }*/
+  for (int j=0;j<d_nNbr[row_index];j++){
+    sum += d_w[row_index][j].distance; 
+  }
+  return sum; // make sure it returns the correct sum
+}
 
 
-// double frob_norm(){
-//   int i,j;
-//   double norm=0;
-//   for (i=0; i<N; i++)
-//     for (j=0; j<D; j++)
-//       norm += m[i][j] * m[i][j];
-//   return sqrt(norm);
-// }
+__global__ void dev_calc_meanshift(double *d_m_data, double *d_y_new_data, double *d_y_data)
+{
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
 
-// void calc_meanshift(){
-//   int i,j;
-//   for (i=0;i<N;i++)
-//     for (j=0; j<D; j++)
-//       m[i][j] = y_new[i][j] - y[i][j];       
-// }
+  while(id < N_SIZE*D_SIZE){
+    d_m_data[id] = d_y_new_data[id] - d_y_data[id];
+    id += gridDim.x+blockDim.x;
+  }
+}
 
-// void copy_2Darray(double **source, double **destination, const int ROW, const int COL){
-//   int i,j;
-//   for (i=0;i<ROW;i++)
-//     for (j=0; j<COL; j++)
-//       destination[i][j] = source[i][j];
-// }
+__global__ void dev_copy_2Darray(double *source, double *destination)
+{
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  while(id < N_SIZE*D_SIZE){
+    destination[id] = source[id];
+    id += gridDim.x+blockDim.x;
+  }
+}
 
 void print_2Darray(double **a, const int ROW, const int COL){
   int i,j;
