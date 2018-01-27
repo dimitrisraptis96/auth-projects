@@ -178,10 +178,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   fclose(fp);
 }
 
-__global__ void gpu_init_arr( int *d_nNbr, 
-                              double *d_x_data, 
-                              double *d_y_data, 
-                              double *d_m_data)
+__global__ void gpu_init_arr( int *d_nNbr, double *d_x_data, double *d_y_data, double *d_m_data)
 {
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
   
@@ -191,6 +188,7 @@ __global__ void gpu_init_arr( int *d_nNbr,
     if(tid%D_SIZE == 0) d_nNbr[tid/D_SIZE] = 0; // can be optized ???
     d_y_data[tid] = d_x_data[tid];
     d_m_data[tid] = DBL_MAX;
+    tid += gridDim.x*blockDim.x;
   }
 }
 
