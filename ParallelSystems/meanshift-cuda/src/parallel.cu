@@ -1,16 +1,15 @@
-#include "../include/global_vars.h"
 #include "../include/parallel.h"
-#include "../include/helpers.h"
+#include "../include/global_vars.h"
+#include "../include/cuda_helpers.h"
 
-// TODO: prepare_gpu()
-// TODO: malloc continuous memory !!!
+// global device N and D
+__device__ __constant__ int N_SIZE; 
+__device__ __constant__ int D_SIZE;
 
-__global__ 
-void init_arr(int *d_nNbr,double *d_x_data, double *d_y_data, double *d_m_data);
-void cuda_error_handler(cudaError_t err);
-
-__device__ int GRID_SIZE
-__device__ int BLOCK_SIZE
+// set grid and block sizes
+const int threads_per_block = 256;
+const int blocks_per_grid  = 
+            MIN(32, (N+threads_per_block-1) / threads_per_block);
 
 typedef struct {
     int j;
@@ -18,15 +17,14 @@ typedef struct {
 } SparseData;
 
 // host copies
-  double **x, **y;
-  double *x_data, *y_data;
+double **x, **y;
+double *x_data, *y_data;
 
 // device copies
-  double **d_x,**d_y,**d_y_new,**d_m;
-  double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data;
-  int *d_nNbr;
-  SparseData **d_w;  
-  int *limit; 
+double **d_x,**d_y,**d_y_new,**d_m;
+double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data;
+int *d_nNbr;
+SparseData **d_w; 
 
 
 extern "C"
@@ -54,19 +52,7 @@ void parallel(){
 
 }
 
-// Check if cuda API calls returned successfully
-void cuda_error_handler(cudaError_t err){
-  if (err != cudaSuccess) {
-    printf("%s\n", cudaGetErrorString(err));
-    exit(1);
-  }
-}
-
 void init_parallel(){
-  // define device global variables
-  cuda_error_handler( cudaMemCpyToSymbol (GRID_SIZE,  &N, sizeof(int), 0, cudaCpyHostToDevice) );
-  cuda_error_handler( cudaMemCpyToSymbol (BLOCK_SIZE, &D, sizeof(int), 0, cudaCpyHostToDevice) );
-
   cpu_malloc();
   gpu_malloc();
   read_file();
@@ -83,12 +69,15 @@ void cpu_malloc(){
   x     = (double **) malloc(N * sizeof(double *));
   y     = (double **) malloc(N * sizeof(double *));
 
-  if (x == NULL || y == NULL) {perror("[ERROR]:"); exit(1);} 
+  HANDLE_NULL( x );
+  HANDLE_NULL( y );
 
   // malloc data of the arrays
   x_data      = (double *) malloc(N * D * sizeof(double));
   y_data      = (double *) malloc(N * D * sizeof(double));
 
+  HANDLE_NULL( x_data );
+  HANDLE_NULL( y_data );
   if(x_data == NULL || y_data == NULL) {perror("[ERROR]:"); exit(1);}
 
   // assign pointers of data to arrays
@@ -107,40 +96,37 @@ void gpu_malloc (){
   
   // malloc pointers of rows
   size = N * sizeof(double *);
-  cuda_error_handler( cudaMalloc((void**)&d_x,    size) );
-  cuda_error_handler( cudaMalloc((void**)&d_y,    size) );
-  cuda_error_handler( cudaMalloc((void**)&d_y_new,size) );
-  cuda_error_handler( cudaMalloc((void**)&d_m,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_x,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_y,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_y_new,size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_m,    size) );
 
   // malloc data of the arrays
   size = N * D * sizeof(double);
-  cuda_error_handler( cudaMalloc((void**)&d_x_data,    size) );
-  cuda_error_handler( cudaMalloc((void**)&d_y_data,    size) );
-  cuda_error_handler( cudaMalloc((void**)&d_y_new_data,size) );
-  cuda_error_handler( cudaMalloc((void**)&d_m_data,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_x_data,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_y_data,    size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_y_new_data,size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_m_data,    size) );
 
-  //malloc nNbr
+  // malloc nNbr
   size = N * sizeof(int);
-  cuda_error_handler( cudaMalloc((void**)&d_nNbr, size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_nNbr, size) );
 
-  //malloc w indexes of rows
+  // malloc w indexes of rows
   size = N * sizeof(SparseData *);
-  cuda_error_handler( cudaMalloc((void**)&d_w, size) );
-
-  // int value
-  size = sizeof(int);
-  cuda_error_handler( cudaMalloc((void**)&limit, size) );
+  HANDLE_ERROR( cudaMalloc((void**)&d_w, size) );
 }
 
 void move_data_to_gpu(){
-  int size;
-
   if(VERBOSE) printf("[INFO]: Move data to device..\n");
 
-  size = N * sizeof(double *);
-  cuda_error_handler( cudaMemcpy(d_x, x, size, cudaMemcpyHostToDevice) );
-  size = N * D * sizeof(double);
-  cuda_error_handler( cudaMemcpy(d_x_data, x_data, size, cudaMemcpyHostToDevice) );
+  // move device constant variables N_SIZE and D_SIZE
+  HANDLE_ERROR( cudaMemcpyToSymbol (N_SIZE, &N, sizeof(int)) );
+  HANDLE_ERROR( cudaMemcpyToSymbol (D_SIZE, &D, sizeof(int)) );
+
+  // move device global variable d_x and d_x_data
+  HANDLE_ERROR( cudaMemcpy(d_x,      x,      N*sizeof(double *), cudaMemcpyHostToDevice) );
+  HANDLE_ERROR( cudaMemcpy(d_x_data, x_data, N*D*sizeof(double), cudaMemcpyHostToDevice) );
 }
 
 void free_memory(){
@@ -192,46 +178,30 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   fclose(fp);
 }
 
-__global__ 
-void init_arr(int *limit, 
-              int *d_nNbr, 
-              double *d_x_data, 
-              double *d_y_data, 
-              double *d_m_data)
+__global__ void gpu_init_arr( int *d_nNbr, 
+                              double *d_x_data, 
+                              double *d_y_data, 
+                              double *d_m_data)
 {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  int tid = threadIdx.x  + blockIdx.x*blockDim.x;
   
   // TODO: shared memory: the data within the block
 
-  if (id < GRID_SIZE*BLOCK_SIZE) {
-    if(id%2 == 0) d_nNbr[id/2] = 0; // can be optized
-    d_y_data[id] = d_x_data[id];
-    d_m_data[id] = DBL_MAX;
+  while (tid < N_SIZE*D_SIZE) {
+    if(tid%D_SIZE == 0) d_nNbr[tid/D_SIZE] = 0; // can be optized ???
+    d_y_data[tid] = d_x_data[tid];
+    d_m_data[tid] = DBL_MAX;
   }
 }
-
-/*void set_threads(int size){
-
-  if ((size) < 32) {
-    threads_num = size;
-    blocks_num  = 1;
-  }
-  else {
-    threads_num = size;
-    blocks_num  = ceil(float(size / threads_num);
-  }
-}
-*/
 
 
 void meanshift(){
   int iter=0;
-  int nblocks=N, nthreads=D;
   double norm = DBL_MAX;
 
-  init_arr <<<N,D>>> (limit, d_nNbr, d_x_data, d_y_data, d_m_data); ///not ready!!!!!!!!
+  gpu_init_arr <<<blocks_per_grid, threads_per_block>>> (d_nNbr, d_x_data, d_y_data, d_m_data); ///not ready!!!!!!!!
 
-  cuda_error_handler( cudaMemcpy(y_data, d_y_data, N * D * sizeof(double), cudaMemcpyDeviceToHost) );
+  HANDLE_ERROR( cudaMemcpy(y_data, d_y_data, N*D*sizeof(double), cudaMemcpyDeviceToHost) );
 
   write_csv_file("",y,N,D);
 
@@ -295,7 +265,9 @@ void meanshift(){
 //       }
 //     }
 
-//     // malloc sparse matrix (w) rows
+//     //for (i=0)
+
+//     // cudamalloc sparse matrix (w) rows
 //     w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
 //     if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
 

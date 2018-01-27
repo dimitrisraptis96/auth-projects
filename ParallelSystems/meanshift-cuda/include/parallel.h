@@ -1,21 +1,14 @@
 #ifndef PARALLEL_H_
 #define PARALLEL_H_
 
-#include "../include/global_vars.h"
-#include "../include/parallel.h"
-#include "../include/helpers.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <float.h>
 #include <math.h>
 
+#define MIN(a,b) (a<b?a:b)
 
-// __global__ void init_arr(int *d_nNbr, double **d_y_data, double **d_m_data);
-// void cuda_error_handler(cudaError_t err);
-
-// extern "C" void parallel();
 void init_parallel();
 void cpu_malloc();
 void gpu_malloc ();
