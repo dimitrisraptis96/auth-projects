@@ -40,3 +40,12 @@ __global__ void gpu_init_arr( int *d_nNbr,
                               double *d_m_data);
 
 #endif
+
+
+__global__ void gpu_init_arr(int *nNbr, double *x, double *y, double *m);
+__global__ void gpu_find_neighbours(int y_row, double h, int *nNbr, double *buffer, double **y, double **x);
+// __global__ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData **w);
+// __global__ void gpu_normalize(int *nNbr, SparseData **w, double *y_new);
+__global__ void gpu_calc_meanshift(double *m, double *y_new, double *y);
+__global__ void gpu_copy_2Darray(double *source, double *destination);
+__global__ void gpu_frob_norm(double *m, double *result);
