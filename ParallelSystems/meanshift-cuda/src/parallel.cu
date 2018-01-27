@@ -186,7 +186,7 @@ __global__ void gpu_init_arr( int *d_nNbr,
   // TODO: shared memory: the data within the block
 
   while (tid < N_SIZE*D_SIZE) {
-    if(tid%D_SIZE == 0) d_nNbr[tid/D_SIZE] = 0; // can be optized ???
+    d_nNbr[tid%N_SIZE] = 0; 
     d_y_data[tid] = d_x_data[tid];
     d_m_data[tid] = DBL_MAX;
   }
