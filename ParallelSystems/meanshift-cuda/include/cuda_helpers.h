@@ -39,4 +39,8 @@ __global__ void gpu_init_arr( int *d_nNbr,
                               double *d_y_data, 
                               double *d_m_data);
 
+__global__ void dev_calc_meanshift(double *d_m_data, double *d_y_new_data, double *d_y_data);
+
+__global__ void dev_copy_2Darray(double *source, double *destination);
+
 #endif
