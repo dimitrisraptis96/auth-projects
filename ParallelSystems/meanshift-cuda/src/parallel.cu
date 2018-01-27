@@ -2,14 +2,13 @@
 #include "../include/global_vars.h"
 #include "../include/cuda_helpers.h"
 
-// global device N and D
+// constant device N and D
 __device__ __constant__ int N_SIZE; 
 __device__ __constant__ int D_SIZE;
 
-// set grid and block sizes
+// grid and block sizes
 const int threads_per_block = 256;
-const int blocks_per_grid  = 
-            MIN(32, (N+threads_per_block-1) / threads_per_block);
+const int blocks_per_grid  = MIN(32, (N+threads_per_block-1) / threads_per_block);
 
 typedef struct {
     int j;
@@ -78,7 +77,6 @@ void cpu_malloc(){
 
   HANDLE_NULL( x_data );
   HANDLE_NULL( y_data );
-  if(x_data == NULL || y_data == NULL) {perror("[ERROR]:"); exit(1);}
 
   // assign pointers of data to arrays
   for(i=0; i < N; i++){

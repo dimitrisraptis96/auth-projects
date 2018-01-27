@@ -1,7 +1,7 @@
-#include "../include/global_vars.h"
 #include "../include/main.h"
 #include "../include/serial.h"
 #include "../include/parallel.h"
+#include "../include/global_vars.h"
 
 //global variables
 int N;

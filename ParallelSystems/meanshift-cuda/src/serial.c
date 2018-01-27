@@ -1,6 +1,5 @@
-#include "../include/global_vars.h"
 #include "../include/serial.h"
-#include "../include/helpers.h"
+#include "../include/global_vars.h"
 
 // TODO: inline optimization
 

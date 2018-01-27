@@ -6,7 +6,6 @@ TARGET=bin/main
 
 SRCEXT := c
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT)*)
-# OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)*=.o))
 OBJECTS := $(SOURCES:.c*=.o)
 
 CFLAGS=-g -O4 -Wall -lm 
