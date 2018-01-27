@@ -34,13 +34,6 @@ static void HandleError( cudaError_t err,
                                     __FILE__, __LINE__ ); \
                             exit( EXIT_FAILURE );}}
 
-__global__ void gpu_init_arr( int *d_nNbr, 
-                              double *d_x_data, 
-                              double *d_y_data, 
-                              double *d_m_data);
-
-#endif
-
 
 __global__ void gpu_init_arr(int *nNbr, double *x, double *y, double *m);
 __global__ void gpu_find_neighbours(int y_row, double h, int *nNbr, double *buffer, double **y, double **x);
@@ -49,3 +42,6 @@ __global__ void gpu_find_neighbours(int y_row, double h, int *nNbr, double *buff
 __global__ void gpu_calc_meanshift(double *m, double *y_new, double *y);
 __global__ void gpu_copy_2Darray(double *source, double *destination);
 __global__ void gpu_frob_norm(double *m, double *result);
+
+#endif
+
