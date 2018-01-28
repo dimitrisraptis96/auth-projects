@@ -109,7 +109,7 @@ void gpu_malloc (){
   HANDLE_ERROR( cudaMalloc((void**)&d_m_data,    size) );
 
   // malloc d_sum
-  size = threads_per_block * sizeof(double);
+  size = blocks_per_grid * sizeof(double);
   HANDLE_ERROR( cudaMalloc((void**)&d_sum, size) );
 
   // malloc d_nNbr
@@ -254,23 +254,19 @@ void gpu_init_arr(int *nNbr, double *x, double *y, double *m)
 }
 
 // TODO: reduction with shared memory
-__global__ void gpu_find_neighbours
+__global__ void gpu_calc_distances
 (int y_row, double h, double *buffer, double *y, double *x, double *n){
 
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
-  int i,j, x_arr_offset, y_arr_offset, nbr=0;
-
-  __shared__ int cache[threads_per_block];
-  int cacheIndex = threadIdx.x;
+  int i,j, x_arr_offset, y_arr_offset;
   
   double dist;
 
-  // i=tid;
   while (tid < N_SIZE) {
     i = tid/D_SIZE;
     // diagonal elements
     if (y_row == tid){
-      buffer[tid] = 1; nbr++;
+      buffer[tid] = 1;
       tid += blockDim.x * gridDim.x;
       continue;
     }
@@ -286,8 +282,7 @@ __global__ void gpu_find_neighbours
     // element inside radious
     if (dist < h*h){
       buffer[tid]= exp(-dist / (2.0*h*h));
-      nbr++;
-     }
+    }
     // unnecessary elements
     else{
       buffer[tid]=0;
@@ -295,24 +290,6 @@ __global__ void gpu_find_neighbours
 
     tid += blockDim.x * gridDim.x;
   }
-
-  // set the cache values
-  cache[cacheIndex] = nbr;
-
-  __syncthreads();
-
-  /// reduction
-  int k = blockDim.x/2;
-    while (k != 0) {
-        if (cacheIndex < k)
-            cache[cacheIndex] += cache[cacheIndex + k];
-        __syncthreads();
-        k /= 2;
-    }
-
-    if (cacheIndex == 0)
-        n[blockIdx.x] = cache[0];
-
 }
 
 void rangesearch2sparse(){
@@ -325,17 +302,22 @@ void rangesearch2sparse(){
 
   for (i=0; i<N; i++){
     // find neighbours of y[i] row
-    gpu_find_neighbours <<<blocks_per_grid, threads_per_block>>>
-        (i,BANDWIDTH,d_buffer,d_y_data,d_x_data,d_sum);
+    gpu_calc_distances <<<blocks_per_grid, threads_per_block>>>(i,BANDWIDTH,d_buffer,d_y_data,d_x_data,d_sum);
 
     // number of neighbours
-    nNbr[i] = (int) finish_reduction(); printf("nNbr[%d]=%d\n",i,nNbr[i]);
+    // nNbr[i] = (int) finish_reduction(); 
 
     // get buffer from device
     HANDLE_ERROR( cudaMemcpy(buffer, d_buffer, N*sizeof(double), cudaMemcpyDeviceToHost) );
     
-    // for (j=0; j<N; j++)
-    //   printf("%lf ",buffer[j]);
+    // find neighbours
+    nNbr[i] = 0;
+    for(j=0;j<N;j++)
+      if(buffer[j]>0) nNbr[i]+=1;
+    
+    
+    // printf("\nnNbr[%d]=%d\n",i,nNbr[i]);
+    
 
     // malloc w[i] device memory
     HANDLE_ERROR( cudaMalloc((void**)&w[i], nNbr[i] * sizeof(SparseData)) );
@@ -344,25 +326,26 @@ void rangesearch2sparse(){
 
     index = 0;
     HANDLE_NULL( (tmp = (SparseData *) malloc(nNbr[i]*sizeof(SparseData))) );
+
     for (j=0; j<N; j++){
       if (buffer[j] > 0){
         tmp[index].j        = j;
         tmp[index].distance = buffer[j];
+        // printf("j = %d dist = %lf index = %d\n", tmp[index].j, tmp[index].distance, index);
         index++;
       }
     // printf("index = %d\n",index );
     }
 
-    // for (j=0; j<nNbr[i]; j++){
-    //   printf("%lf ",tmp[j].distance);
-    // }
-
-// printf("d\n");
+    printf("%p\n", tmp);
+    printf("%p\n", w[i]);
+    printf("%d\n", nNbr[i]*sizeof(SparseData));
+    printf("Nbr[%d]=%d\n",i,nNbr[i]);
     HANDLE_ERROR( cudaMemcpy(&d_w[i], tmp, nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
-        // printf("3\n");
+
     free (tmp);
-    exit(1);
   }
+
   free(buffer);
 }
 
@@ -496,8 +479,11 @@ double finish_reduction(){
                             blocks_per_grid*sizeof(float),
                             cudaMemcpyDeviceToHost ) );
   sum = 0;
-  for (int i=0; i<blocks_per_grid; i++)
+  for (int i=0; i<blocks_per_grid; i++){
+    printf("%lf ",result[i] );
       sum += result[i];
+  }
+  printf("----------------------\n");
   return sum;
 }
 

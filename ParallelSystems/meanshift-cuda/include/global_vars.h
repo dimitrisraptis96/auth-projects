@@ -23,7 +23,7 @@
 #endif
 
 #ifndef BANDWIDTH
-#define BANDWIDTH 100000.
+#define BANDWIDTH 1.0
 #endif
 
 #ifndef TYPE_CPU

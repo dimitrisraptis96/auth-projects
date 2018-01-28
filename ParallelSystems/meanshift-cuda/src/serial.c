@@ -216,6 +216,12 @@ void rangesearch2sparse(){
       }
     }
 
+    // if (i==1){
+    //   for (j=0; j<N; j++)
+    //     printf("%lf ",buffer[j]);
+      printf("nNbr[%d]=%d\n",i,nNbr[i]);
+    // }
+
       // for (k=0;k<N;k++)
       //   printf("%lf ", buffer[k]);
     // malloc sparse matrix (w) rows
@@ -230,12 +236,12 @@ void rangesearch2sparse(){
         index++;
       }
     }
-  for (i=0;i<50;i++){
-      printf("nNbr[%d]=%d\n",i,nNbr[i]);
-      printf("------------\n");
-    }
-  exit(1);
   }
+  // for (i=0;i<50;i++){
+  //     printf("nNbr[%d]=%d\n",i,nNbr[i]);
+  //     printf("------------\n");
+  //   }
+  exit(1);
 }
 
 double euclidean_distance(const int first, const int second){
