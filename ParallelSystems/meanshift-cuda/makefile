@@ -2,20 +2,19 @@ CC=nvcc
 
 SRCDIR=src
 BUILDDIR=build
-TARGET=bin/main
+TARGET=bin/meanshift
 
 SRCEXT := c
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT)*)
 OBJECTS := $(SOURCES:.c*=.o)
-
-CFLAGS=-g -O4 -Wall -lm 
+ 
 NVFLAGS=-g -04 -lm -lcuda -lcudart
 INC := -I include
 
 RM = rm -f
 
 $(TARGET): $(OBJECTS)
-	$(CC) $^ -o $(TARGET) -lm
+	$(CC) $^ -o $(TARGET) -lm --gpu-architecture=compute_50 --gpu-code=compute_50,sm_50
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)*
 	  @mkdir -p $(BUILDDIR)

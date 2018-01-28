@@ -3,13 +3,15 @@
 
 
 #ifndef DATASET_PATH
-#define DATASET_PATH     "data/S1.txt"
+// #define DATASET_PATH     "data/S1.txt"
+#define DATASET_PATH     "data/dataset.txt"
 #endif
 #ifndef VALIDATION_PATH
 #define VALIDATION_PATH  "data/..."
 #endif
 #ifndef OUTPUT_PATH
-#define OUTPUT_PATH 	 "data/out-S1.txt"
+// #define OUTPUT_PATH 	 "data/out-S1.txt"
+#define OUTPUT_PATH 	 "data/out-dataset.txt"
 #endif
 
 #ifndef VERBOSE

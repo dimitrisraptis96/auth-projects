@@ -41,7 +41,7 @@ __global__ void gpu_find_neighbours(int y_row, double h, int *nNbr, double *buff
 // __global__ void gpu_normalize(int *nNbr, SparseData **w, double *y_new);
 __global__ void gpu_calc_meanshift(double *m, double *y_new, double *y);
 __global__ void gpu_copy_2Darray(double *source, double *destination);
-__global__ void gpu_frob_norm(double *m, double *result);
+__global__ void gpu_frob_norm_shared(double *m, double *result);
 
 #endif
 

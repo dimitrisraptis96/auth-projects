@@ -193,9 +193,9 @@ void meanshift(){
 
   while (norm > EPSILON){
     iter++;
-    printf("-1\n");
     // find distances and calculate kernels
     rangesearch2sparse();
+    printf("-1\n");
 
     // compute new y vector
     gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_data,d_w);
@@ -210,7 +210,7 @@ void meanshift(){
     gpu_copy_2Darray <<<blocks_per_grid, threads_per_block>>>(d_y_new_data, d_y_data);
 
     // calculate Frobenius norm
-    gpu_frob_norm <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_norm);
+    gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_norm);
     
     //wait kernel calls to be executed
     HANDLE_ERROR( cudaDeviceSynchronize() );
@@ -253,26 +253,28 @@ __global__ void gpu_find_neighbours(int y_row, double h, int *nNbr, double *buff
   int i,j, x_offset, y_offset;
   double dist;
 
-  i = tid/D_SIZE;
-  j = tid%D_SIZE;
-
-  while (tid < N_SIZE*D_SIZE) {
+  while (tid < N_SIZE) {
+    i = tid/D_SIZE;
     // diagonal elements
-    if (y_row == i){
-      buffer[i] = 1; nNbr[i]++;
-      return;
-    }
+    // if (y_row == i){
+    //   buffer[i] = 1; nNbr[i]++;
+    //   tid += blockDim.x * gridDim.x;
+    //   continue;
+    // }
     
     x_offset = i*D_SIZE;
-    y_offset = y_row*D_SIZE;
-    
-    dist += (y[j + y_offset] - x[j + x_offset])*(y[j + y_offset] - x[j + x_offset]);
+    y_offset = y_row*D_SIZE;  
 
+    dist = 0;
+    for(j=0; j<D_SIZE; j++)
+      dist += (y[y_offset + j] - x[x_offset] + j)*(y[y_offset + j] - x[x_offset] + j);
+
+    // element inside radious
     if (dist < h*h){
         buffer[i]= exp(-dist / (2.0*h*h));
         nNbr[i]++;
     }
-    // unnecessary points
+    // unnecessary elements
     else{
       buffer[i]=0;
     }
@@ -293,11 +295,16 @@ void rangesearch2sparse(){
     gpu_find_neighbours <<<blocks_per_grid, threads_per_block>>>(i,BANDWIDTH,d_nNbr,d_buffer,d_y_data,d_x_data);
     HANDLE_ERROR( cudaMemcpy(buffer, d_buffer, N*sizeof(double), cudaMemcpyDeviceToHost) );
 
+    for(j=0;j<N;j++)
+      printf("%lf ",buffer[i]);
     // get number of neighbours for y[i] from device
     // HERE MAYBE THERE IS AN ERROR
     HANDLE_ERROR( cudaMemcpy(&size, &d_nNbr[i], sizeof(int), cudaMemcpyDeviceToHost) );
+        printf("-1\n");
+
     // malloc w[i] device memory
     HANDLE_ERROR( cudaMalloc((void**)&d_w[i], size * sizeof(SparseData)) );
+    printf("-1\n");
 
     index = 0;
     SparseData tmp;
@@ -319,10 +326,9 @@ __global__
 void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData **w)
 {
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
-  int k, offset, i, j;
+  int k, offset, i;
   
   i = tid/D_SIZE;
-  j = tid%D_SIZE;
 
   while(tid < N_SIZE*D_SIZE){
     offset = i*D_SIZE;
@@ -337,7 +343,7 @@ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData **w)
 __global__ void gpu_normalize(int *nNbr, SparseData **w, double *y_new) 
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int i,j,k;
+  int i,j;
   double sum=0;
   
   i = tid/D_SIZE;
@@ -372,8 +378,37 @@ __global__ void gpu_copy_2Darray(double *source, double *destination)
   }
 }
 
-// TODO: non-shared implementation (use code from gpu_normalize)
+/*// TODO: non-shared implementation (use code from gpu_normalize)
 __global__ void gpu_frob_norm(double *m, double *result){
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+  double norm = 0;
+  while (tid < N_SIZE*D_SIZE) {
+      norm += m[tid] * m[tid];
+      tid += blockDim.x*gridDim.x;
+  }
+  
+  // set the cache values
+  cache[cacheIndex] = norm;
+  
+  // synchronize threads in this block
+  __syncthreads();
+
+  // for reductions, threads_per_block must be a power of 2
+  int i = blockDim.x/2;
+  while (i != 0) {
+      if (cacheIndex < i)
+          cache[cacheIndex] += cache[cacheIndex + i];
+      __syncthreads();
+      i /= 2;
+  }
+
+  if (cacheIndex == 0)
+      result[blockIdx.x] = cache[0];
+}*/
+
+// TODO: non-shared implementation (use code from gpu_normalize)
+__global__ void gpu_frob_norm_shared(double *m, double *result){
   __shared__ float cache[threads_per_block];
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int cacheIndex = threadIdx.x;
