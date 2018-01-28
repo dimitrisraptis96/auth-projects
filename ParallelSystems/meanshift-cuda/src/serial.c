@@ -179,9 +179,8 @@ void meanshift(){
     // calculate Frobenius norm
     norm = frob_norm();
 
-    if (VERBOSE){
-      printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
-    }
+    printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
+
   } 
   if (VERBOSE)  write_csv_file("",y_new,N,D);
   
@@ -190,7 +189,7 @@ void meanshift(){
 
 
 void rangesearch2sparse(){
-  int i,j, index;
+  int i,j,k, index;
   double dist;
 
   // malloc buffer for sparse matrix's rows
@@ -217,6 +216,8 @@ void rangesearch2sparse(){
       }
     }
 
+      // for (k=0;k<N;k++)
+      //   printf("%lf ", buffer[k]);
     // malloc sparse matrix (w) rows
     w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
     if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
@@ -229,7 +230,20 @@ void rangesearch2sparse(){
         index++;
       }
     }
+  for (i=0;i<50;i++){
+      printf("nNbr[%d]=%d\n",i,nNbr[i]);
+      printf("------------\n");
+    }
+  exit(1);
   }
+}
+
+double euclidean_distance(const int first, const int second){
+  int j;
+  double dist = 0;
+  for (j=0; j<D; j++)
+    dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
+  return dist;
 }
 
 void matrix_mult() {
@@ -304,10 +318,3 @@ double gaussian_kernel(const double dist){
     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
 
-double euclidean_distance(const int first, const int second){
-  int j;
-  double dist = 0;
-  for (j=0; j<D; j++)
-    dist += (y[first][j] - x[second][j]) * (y[first][j] - x[second][j]);
-  return dist;
-}

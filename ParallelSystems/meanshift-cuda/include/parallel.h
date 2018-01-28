@@ -16,7 +16,7 @@ void gpu_malloc ();
 void move_data_to_gpu();
 void meanshift();
 void rangesearch2sparse();
-double finish_norm();
+double finish_reduction();
 void gpu_free_memory();
 void cpu_free_memory();
 void print_2Darray(double **a, const int ROW, const int COL);
