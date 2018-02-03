@@ -115,7 +115,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   int i,j;
 
   FILE * fp;
-  fp = fopen (OUTPUT_PATH, "w");
+  fp = fopen (OUTPUT_PATH_SERIAL, "w");
 
   if (fp == NULL){ perror("[ERROR]: "); exit(1); }
 
@@ -180,7 +180,6 @@ void meanshift(){
     norm = frob_norm();
 
     printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
-    // exit(1);
   } 
 
   if (VERBOSE)  write_csv_file("",y_new,N,D);
@@ -217,15 +216,6 @@ void rangesearch2sparse(){
       }
     }
 
-    // if (i==1){
-    //   for (j=0; j<N; j++)
-    //     printf("%lf ",buffer[j]);
-      // printf("nNbr[%d]=%d\n",i,nNbr[i]);
-    // }s
-
-      // for (k=0;k<N;k++)
-      //   printf("%lf ", buffer[k]);
-    // malloc sparse matrix (w) rows
     w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
     if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
 
@@ -235,10 +225,6 @@ void rangesearch2sparse(){
         w[i][index].j        = j;
         w[i][index].distance = buffer[j];
         index++;
-        if (i==0){
-          printf("%lf\n",buffer[j]);
-          printf("%d\n",j);
-        }
       }
     }
   }

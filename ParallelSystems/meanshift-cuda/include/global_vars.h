@@ -9,8 +9,12 @@
 #ifndef VALIDATION_PATH
 #define VALIDATION_PATH  "data/..."
 #endif
-#ifndef OUTPUT_PATH
-#define OUTPUT_PATH 	 "data/out-S1.txt"
+#ifndef OUTPUT_PATH_SERIAL
+#define OUTPUT_PATH_SERIAL	 	"data/serial-out-S1.txt"
+// #define OUTPUT_PATH 	 "data/out-dataset.txt"
+#endif
+#ifndef OUTPUT_PATH_PARALLEL
+#define OUTPUT_PATH_PARALLEL 	 "data/parallel-out-S1.txt"
 // #define OUTPUT_PATH 	 "data/out-dataset.txt"
 #endif
 

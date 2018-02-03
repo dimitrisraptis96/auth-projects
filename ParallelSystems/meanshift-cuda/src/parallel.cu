@@ -175,7 +175,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   int i,j;
 
   FILE * fp;
-  fp = fopen (OUTPUT_PATH, "w");
+  fp = fopen (OUTPUT_PATH_PARALLEL, "w");
 
   if (fp == NULL){ perror("[ERROR]: "); exit(1); }
 
@@ -205,15 +205,6 @@ void meanshift(){
     // find distances and calculate kernels
     rangesearch2sparse();
 
-    // SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
-
-    // HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
-    // int i,j;
-    // for(i=0; i<5; i++)
-    //   for(j=0; j<2; j++)
-    //     printf("%f\n",y[i][j] );
-
-
     // compute new y vector
     gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_new_data,d_sparse);
 
@@ -228,14 +219,9 @@ void meanshift(){
 
     // calculate Frobenius norm
     gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_sum);
-    
-    // //wait kernel calls to be executed
-    // HANDLE_ERROR( cudaDeviceSynchronize() );
-
     norm = sqrt ( finish_reduction() );
 
     if (VERBOSE) printf("[INFO]: Iteration %d - error %lf\n", iter, norm);   
-    // exit(1); 
   }
 
   // copy results back to host
@@ -255,7 +241,7 @@ void gpu_init_arr(int *nNbr, double *x, double *y, double *m)
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
 
   while (tid < N_SIZE*D_SIZE) {
-    nNbr[tid%N_SIZE] = 0;
+    // nNbr[tid%N_SIZE] = 0;
     y[tid] = x[tid];
     m[tid] = DBL_MAX;
     
@@ -268,12 +254,11 @@ __global__ void gpu_calc_distances
 (int y_row, double h, double *buffer, double *y, double *x, double *n){
 
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
-  int i,j, x_arr_offset, y_arr_offset;
+  int k, x_arr_offset, y_arr_offset;
   
   double dist;
 
   while (tid < N_SIZE) {
-    i = tid/D_SIZE;
     // diagonal elements
     if (y_row == tid){
       buffer[tid] = 1;
@@ -285,8 +270,8 @@ __global__ void gpu_calc_distances
     y_arr_offset = y_row*D_SIZE;  
 
     dist = 0; 
-    for(j=0; j<D_SIZE; j++){
-      dist += (y[y_arr_offset + j] - x[x_arr_offset + j])*(y[y_arr_offset + j] - x[x_arr_offset + j]);
+    for(k=0; k<D_SIZE; k++){
+      dist += (y[y_arr_offset + k] - x[x_arr_offset + k])*(y[y_arr_offset + k] - x[x_arr_offset + k]);
     }
 
     // element inside radious
@@ -303,9 +288,8 @@ __global__ void gpu_calc_distances
 }
 
 void rangesearch2sparse(){
-  int i,j, index, size;
+  int i,j, index, count=0;
   double *buffer;
-  SparseData *tmp;
 
   // malloc buffer for sparse matrix's rows
   HANDLE_NULL( (buffer = (double *) malloc(N*sizeof(double))) );
@@ -314,20 +298,16 @@ void rangesearch2sparse(){
     // find neighbours of y[i] row
     gpu_calc_distances <<<blocks_per_grid, threads_per_block>>>(i,BANDWIDTH,d_buffer,d_y_data,d_x_data,d_sum);
 
-    // number of neighbours
-    // nNbr[i] = (int) finish_reduction(); 
-
     // get buffer from device
     HANDLE_ERROR( cudaMemcpy(buffer, d_buffer, N*sizeof(double), cudaMemcpyDeviceToHost) );
     
     // find neighbours
     nNbr[i] = 0;
     for(j=0;j<N;j++)
-      if(buffer[j]>0) nNbr[i]+=1;   // include diagonal elements too
-
-    // printf("\nnNbr[%d]=%d\n",i,nNbr[i]);
-    
-
+      if(buffer[j]>0){
+        nNbr[i] += 1;   // include diagonal elements too
+        count++;
+      }
 
     index = 0;
     HANDLE_NULL( (w[i] = (SparseData *) malloc(nNbr[i]*sizeof(SparseData))) );
@@ -336,75 +316,24 @@ void rangesearch2sparse(){
       if (buffer[j] > 0){
         w[i][index].j        = j;
         w[i][index].distance = buffer[j];
-        // printf("j = %d dist = %lf index = %d\n", tmp[index].j, tmp[index].distance, index);
         index++;
       }
-    // printf("index = %d\n",index );
     }
   }
+  free(buffer);
+  // here all the neighbours are known
 
+  // move 2D host sparse to 1D device sparse
+  HANDLE_ERROR( cudaMalloc((void**) &d_sparse, count*sizeof(SparseData)) );
 
-  int sum=0, offset;
+  int offset=0;
   for(i=0;i<N;i++){
-    sum += nNbr[i];
+    HANDLE_ERROR( cudaMemcpy(&d_sparse[offset/sizeof(SparseData)], w[i], nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
+    offset += nNbr[i]*sizeof(SparseData);
   }
 
-  HANDLE_ERROR( cudaMalloc((void**)&d_sparse, sum * sizeof(SparseData)) );
-
-  // size_t free,total;
-  // HANDLE_ERROR( cudaMemGetInfo (&free, &total) );
-
-  // printf("free = %zu total = %zu\n",free, total);
-
-  sum=0;
-  for(i=0;i<N;i++){
-    offset = sum * sizeof(SparseData);
-    // for (j=0;j<nNbr[i];j++){
-    //   printf("%lf ", w[i][j].distance);
-    // }
-    // printf("%d %d\n",i, sum );
-    HANDLE_ERROR( cudaMemcpy(&d_sparse[sum], w[i], nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
-    sum += nNbr[i];
-  }
+  // move nNbr to device
   HANDLE_ERROR( cudaMemcpy(d_nNbr, nNbr, N*sizeof(int), cudaMemcpyHostToDevice) );
-
-//==============================================================================
-  SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
-
-  HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
-  // int i,j;
-  for(int i=0; i<nNbr[0]; i++){
-      printf("%lf\n",w[0][i].distance );
-      printf("%d\n",w[0][i].j );    
-  }
-//==============================================================================
-
-
-  // SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
-
-  // HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
-  // for (i=0;i<sum;i++){
-  //   printf("%f \n", test[i].distance);
-  // }
-
-  // printf("das\n");
-  // exit(1);
-   /* // printf("%p\n", tmp);
-    // printf("%p\n", d_w[i]);
-    // printf("%d\n", nNbr[i]*sizeof(SparseData));
-    printf("Nbr[%d]=%d\n",i,nNbr[i]);
-
-    // malloc w[i] device memory
-    HANDLE_ERROR( cudaMalloc((void**)&w[i], nNbr[i] * sizeof(SparseData)) );
-    // move value of d_w[i] to device
-    HANDLE_ERROR( cudaMemcpy(&tmpW[i], &w[i], sizeof(SparseData*), cudaMemcpyHostToDevice) );
-
-    HANDLE_ERROR( cudaMemcpy(&  tmpW[i], tmp, nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
-
-    free (tmp);*/
-  // }
-
-  // free(buffer);
 }
 
 
@@ -412,28 +341,22 @@ __global__
 void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
 {
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
-  int k, offset, i,j,sparse_offset=0;
+  int k, i,j,sparse_offset=0;
   
   i = tid/D_SIZE;
   j = tid%D_SIZE;
 
   while(tid < N_SIZE*D_SIZE){
-
+    //find the dynamic offset of rows that depend on the number of previous neighbours
     for (k=0;k<i;k++)
       sparse_offset += nNbr[k];
     
-    
-    offset = i*D_SIZE;
     y[tid] = 0;
+    // multiply only the sparse element (all the other are 0's)
     for(k=0; k<nNbr[i]; k++)
-      y[tid] += w[sparse_offset + k].distance * x[ w[sparse_offset + k].j * D_SIZE + j ];
+      y[tid] += w[sparse_offset + k].distance * x[ (w[sparse_offset + k].j * D_SIZE)/*row offset of x*/ + j ];
 
     tid += blockDim.x*gridDim.x;
-
-    if(tid == 0)
-      for (int l=0; l<10; l++)
-        printf("%lf\n",y[l]);
-      
   }
 }
 
@@ -441,19 +364,21 @@ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
 __global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new) 
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int i,j,sparse_offset=0;
+  int i,sparse_offset=0;
   double sum=0;
   
   i = tid/D_SIZE;
-  j = tid%D_SIZE;
 
   while(tid < N_SIZE*D_SIZE) {
-    for (int j=0;j<i;j++){
-      sparse_offset += nNbr[j];
-    }
+    //find the dynamic offset of rows that depend on the number of previous neighbours
+    for (int k=0;k<i;k++)
+      sparse_offset += nNbr[k];
 
+    // TODO: sum can be shared if D>>2
+
+    // find sum of current row
     for (int k=0; k<nNbr[i]; k++)
-      sum += w[sparse_offset+k].distance; // not contiguous memory, [][] necessary
+      sum += w[sparse_offset+k].distance; 
 
     y_new[tid] /= sum;
     tid += gridDim.x*blockDim.x;
@@ -480,34 +405,6 @@ __global__ void gpu_copy_2Darray(double *source, double *destination)
   }
 }
 
-/*// TODO: non-shared implementation (use code from gpu_normalize)
-__global__ void gpu_frob_norm(double *m, double *result){
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-
-  double norm = 0;
-  while (tid < N_SIZE*D_SIZE) {
-      norm += m[tid] * m[tid];
-      tid += blockDim.x*gridDim.x;
-  }
-  
-  // set the cache values
-  cache[cacheIndex] = norm;
-  
-  // synchronize threads in this block
-  __syncthreads();
-
-  // for reductions, threads_per_block must be a power of 2
-  int i = blockDim.x/2;
-  while (i != 0) {
-      if (cacheIndex < i)
-          cache[cacheIndex] += cache[cacheIndex + i];
-      __syncthreads();
-      i /= 2;
-  }
-
-  if (cacheIndex == 0)
-      result[blockIdx.x] = cache[0];
-}*/
 
 // TODO: non-shared implementation (use code from gpu_normalize)
 __global__ void gpu_frob_norm_shared(double *m, double *result){
@@ -538,6 +435,7 @@ __global__ void gpu_frob_norm_shared(double *m, double *result){
       i /= 2;
   }
 
+  // only 1rst thread of each block
   if (cacheIndex == 0)
       result[blockIdx.x] = cache[0];
 }
@@ -554,9 +452,9 @@ double finish_reduction(){
                             blocks_per_grid*sizeof(float),
                             cudaMemcpyDeviceToHost ) );
   sum = 0;
-  for (int i=0; i<blocks_per_grid; i++){
+  for (int i=0; i<blocks_per_grid; i++)
       sum += result[i];
-  }
+  
   free(result);
   return sum;
 }
