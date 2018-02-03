@@ -180,8 +180,9 @@ void meanshift(){
     norm = frob_norm();
 
     printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
-
+    // exit(1);
   } 
+
   if (VERBOSE)  write_csv_file("",y_new,N,D);
   
   free_memory();
@@ -219,8 +220,8 @@ void rangesearch2sparse(){
     // if (i==1){
     //   for (j=0; j<N; j++)
     //     printf("%lf ",buffer[j]);
-      printf("nNbr[%d]=%d\n",i,nNbr[i]);
-    // }
+      // printf("nNbr[%d]=%d\n",i,nNbr[i]);
+    // }s
 
       // for (k=0;k<N;k++)
       //   printf("%lf ", buffer[k]);
@@ -232,16 +233,15 @@ void rangesearch2sparse(){
     for (j=0; j<N; j++){
       if (buffer[j] > 0){
         w[i][index].j        = j;
-        w[i][index].distance = buffer[j]; 
+        w[i][index].distance = buffer[j];
         index++;
+        if (i==0){
+          printf("%lf\n",buffer[j]);
+          printf("%d\n",j);
+        }
       }
     }
   }
-  // for (i=0;i<50;i++){
-  //     printf("nNbr[%d]=%d\n",i,nNbr[i]);
-  //     printf("------------\n");
-  //   }
-  exit(1);
 }
 
 double euclidean_distance(const int first, const int second){
@@ -257,8 +257,9 @@ void matrix_mult() {
   for(i=0; i<N; i++){
     for(j=0; j<D; j++){
       y_new[i][j] = 0;
-      for(k=0; k<nNbr[i]; k++)
-          y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
+      for(k=0; k<nNbr[i]; k++){
+        y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
+      }
     }
   }
 }
@@ -296,7 +297,8 @@ void calc_meanshift(){
   int i,j;
   for (i=0;i<N;i++)
     for (j=0; j<D; j++)
-      m[i][j] = y_new[i][j] - y[i][j];       
+      m[i][j] = y_new[i][j] - y[i][j]; 
+
 }
 
 void copy_2Darray(double **source, 
@@ -307,7 +309,7 @@ void copy_2Darray(double **source,
   int i,j;
   for (i=0;i<ROW;i++)
     for (j=0; j<COL; j++)
-      destination[i][j] = source[i][j];
+      destination[i][j] = source[i][j];     
 }
 
 void print_2Darray(double **a, const int ROW, const int COL){

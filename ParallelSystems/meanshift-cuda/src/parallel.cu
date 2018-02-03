@@ -19,15 +19,17 @@ typedef struct {
 double *x_data, *y_data, *buffer, **x, **y;
 int *nNbr;
 SparseData **w; 
+SparseData **tmpW;
 
 // device copies
 double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data,*d_sum, *d_buffer;
 double **d_x,**d_y,**d_y_new,**d_m;
 int *d_nNbr;
-SparseData **d_w; 
+SparseData **d_w,*d_sparse; 
 
-__global__ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData **w);
-__global__ void gpu_normalize(int *nNbr, SparseData **w, double *y_new);
+
+__global__ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w);
+__global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new);
 
 extern "C"
 void parallel(){
@@ -124,9 +126,10 @@ void gpu_malloc (){
   size = N * sizeof(SparseData *);
   HANDLE_ERROR( cudaMalloc((void**)&d_w, size) );
 
-  // get back indexes from device (need them in rangesearch2sparse)
-  HANDLE_ERROR( cudaMemcpy(w, d_w, sizeof(SparseData**), cudaMemcpyDeviceToHost) );
+    // get back indexes from device (need them in rangesearch2sparse)
+  // HANDLE_ERROR( cudaMemcpy(tmpW, d_w, sizeof(SparseData**), cudaMemcpyDeviceToHost) );
 }
+
 
 void move_data_to_gpu(){
   if(VERBOSE) printf("[INFO]: Move data to device..\n");
@@ -201,13 +204,21 @@ void meanshift(){
     iter++;
     // find distances and calculate kernels
     rangesearch2sparse();
-    printf("-1\n");
+
+    // SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
+
+    // HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
+    // int i,j;
+    // for(i=0; i<5; i++)
+    //   for(j=0; j<2; j++)
+    //     printf("%f\n",y[i][j] );
+
 
     // compute new y vector
-    gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_data,d_w);
+    gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_new_data,d_sparse);
 
     // normalize vector
-    gpu_normalize <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_w,d_y_new_data);    
+    gpu_normalize <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_sparse,d_y_new_data);    
 
     // calculate meanshift
     gpu_calc_meanshift <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_y_new_data,d_y_data);
@@ -218,14 +229,13 @@ void meanshift(){
     // calculate Frobenius norm
     gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_sum);
     
-    //wait kernel calls to be executed
-    HANDLE_ERROR( cudaDeviceSynchronize() );
+    // //wait kernel calls to be executed
+    // HANDLE_ERROR( cudaDeviceSynchronize() );
 
     norm = sqrt ( finish_reduction() );
 
-    if (VERBOSE){
-      printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
-    }
+    if (VERBOSE) printf("[INFO]: Iteration %d - error %lf\n", iter, norm);   
+    // exit(1); 
   }
 
   // copy results back to host
@@ -251,8 +261,8 @@ void gpu_init_arr(int *nNbr, double *x, double *y, double *m)
     
     tid += blockDim.x * gridDim.x;
   }
-}
 
+}
 // TODO: reduction with shared memory
 __global__ void gpu_calc_distances
 (int y_row, double h, double *buffer, double *y, double *x, double *n){
@@ -313,73 +323,137 @@ void rangesearch2sparse(){
     // find neighbours
     nNbr[i] = 0;
     for(j=0;j<N;j++)
-      if(buffer[j]>0) nNbr[i]+=1;
-    
-    
+      if(buffer[j]>0) nNbr[i]+=1;   // include diagonal elements too
+
     // printf("\nnNbr[%d]=%d\n",i,nNbr[i]);
     
 
-    // malloc w[i] device memory
-    HANDLE_ERROR( cudaMalloc((void**)&w[i], nNbr[i] * sizeof(SparseData)) );
-    // move value of d_w[i] to device
-    HANDLE_ERROR( cudaMemcpy(&d_w[i], &w[i], sizeof(SparseData*), cudaMemcpyHostToDevice) );
 
     index = 0;
-    HANDLE_NULL( (tmp = (SparseData *) malloc(nNbr[i]*sizeof(SparseData))) );
+    HANDLE_NULL( (w[i] = (SparseData *) malloc(nNbr[i]*sizeof(SparseData))) );
 
     for (j=0; j<N; j++){
       if (buffer[j] > 0){
-        tmp[index].j        = j;
-        tmp[index].distance = buffer[j];
+        w[i][index].j        = j;
+        w[i][index].distance = buffer[j];
         // printf("j = %d dist = %lf index = %d\n", tmp[index].j, tmp[index].distance, index);
         index++;
       }
     // printf("index = %d\n",index );
     }
-
-    printf("%p\n", tmp);
-    printf("%p\n", w[i]);
-    printf("%d\n", nNbr[i]*sizeof(SparseData));
-    printf("Nbr[%d]=%d\n",i,nNbr[i]);
-    HANDLE_ERROR( cudaMemcpy(&d_w[i], tmp, nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
-
-    free (tmp);
   }
 
-  free(buffer);
+
+  int sum=0, offset;
+  for(i=0;i<N;i++){
+    sum += nNbr[i];
+  }
+
+  HANDLE_ERROR( cudaMalloc((void**)&d_sparse, sum * sizeof(SparseData)) );
+
+  // size_t free,total;
+  // HANDLE_ERROR( cudaMemGetInfo (&free, &total) );
+
+  // printf("free = %zu total = %zu\n",free, total);
+
+  sum=0;
+  for(i=0;i<N;i++){
+    offset = sum * sizeof(SparseData);
+    // for (j=0;j<nNbr[i];j++){
+    //   printf("%lf ", w[i][j].distance);
+    // }
+    // printf("%d %d\n",i, sum );
+    HANDLE_ERROR( cudaMemcpy(&d_sparse[sum], w[i], nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
+    sum += nNbr[i];
+  }
+  HANDLE_ERROR( cudaMemcpy(d_nNbr, nNbr, N*sizeof(int), cudaMemcpyHostToDevice) );
+
+//==============================================================================
+  SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
+
+  HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
+  // int i,j;
+  for(int i=0; i<nNbr[0]; i++){
+      printf("%lf\n",w[0][i].distance );
+      printf("%d\n",w[0][i].j );    
+  }
+//==============================================================================
+
+
+  // SparseData *test = (SparseData*) malloc(sum*sizeof(SparseData));
+
+  // HANDLE_ERROR( cudaMemcpy(test, d_sparse, sum*sizeof(SparseData), cudaMemcpyDeviceToHost) );
+  // for (i=0;i<sum;i++){
+  //   printf("%f \n", test[i].distance);
+  // }
+
+  // printf("das\n");
+  // exit(1);
+   /* // printf("%p\n", tmp);
+    // printf("%p\n", d_w[i]);
+    // printf("%d\n", nNbr[i]*sizeof(SparseData));
+    printf("Nbr[%d]=%d\n",i,nNbr[i]);
+
+    // malloc w[i] device memory
+    HANDLE_ERROR( cudaMalloc((void**)&w[i], nNbr[i] * sizeof(SparseData)) );
+    // move value of d_w[i] to device
+    HANDLE_ERROR( cudaMemcpy(&tmpW[i], &w[i], sizeof(SparseData*), cudaMemcpyHostToDevice) );
+
+    HANDLE_ERROR( cudaMemcpy(&  tmpW[i], tmp, nNbr[i]*sizeof(SparseData), cudaMemcpyHostToDevice) );
+
+    free (tmp);*/
+  // }
+
+  // free(buffer);
 }
 
 
 __global__
-void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData **w)
+void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
 {
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
-  int k, offset, i;
+  int k, offset, i,j,sparse_offset=0;
   
   i = tid/D_SIZE;
+  j = tid%D_SIZE;
 
   while(tid < N_SIZE*D_SIZE){
+
+    for (k=0;k<i;k++)
+      sparse_offset += nNbr[k];
+    
+    
     offset = i*D_SIZE;
     y[tid] = 0;
     for(k=0; k<nNbr[i]; k++)
-      y[tid] += w[i][k].distance * x[ w[i][k].j + offset ];  
+      y[tid] += w[sparse_offset + k].distance * x[ w[sparse_offset + k].j * D_SIZE + j ];
+
     tid += blockDim.x*gridDim.x;
+
+    if(tid == 0)
+      for (int l=0; l<10; l++)
+        printf("%lf\n",y[l]);
+      
   }
 }
 
 // TODO: reduction using shared memory
-__global__ void gpu_normalize(int *nNbr, SparseData **w, double *y_new) 
+__global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new) 
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int i,j;
+  int i,j,sparse_offset=0;
   double sum=0;
   
   i = tid/D_SIZE;
   j = tid%D_SIZE;
 
   while(tid < N_SIZE*D_SIZE) {
+    for (int j=0;j<i;j++){
+      sparse_offset += nNbr[j];
+    }
+
     for (int k=0; k<nNbr[i]; k++)
-      sum += w[i][j].distance; // not contiguous memory, [][] necessary
+      sum += w[sparse_offset+k].distance; // not contiguous memory, [][] necessary
 
     y_new[tid] /= sum;
     tid += gridDim.x*blockDim.x;
@@ -437,8 +511,9 @@ __global__ void gpu_frob_norm(double *m, double *result){
 
 // TODO: non-shared implementation (use code from gpu_normalize)
 __global__ void gpu_frob_norm_shared(double *m, double *result){
-  __shared__ float cache[threads_per_block];
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+  __shared__ float cache[threads_per_block];
   int cacheIndex = threadIdx.x;
 
   double norm = 0;
@@ -472,7 +547,7 @@ double finish_reduction(){
   double *result, sum;
 
   // malloc result array
-  HANDLE_NULL( (result = (double *) malloc(threads_per_block*sizeof(double))) );
+  HANDLE_NULL( (result = (double *) malloc(blocks_per_grid*sizeof(double))) );
 
   HANDLE_ERROR( cudaMemcpy( result, 
                             d_sum,
@@ -480,10 +555,9 @@ double finish_reduction(){
                             cudaMemcpyDeviceToHost ) );
   sum = 0;
   for (int i=0; i<blocks_per_grid; i++){
-    printf("%lf ",result[i] );
       sum += result[i];
   }
-  printf("----------------------\n");
+  free(result);
   return sum;
 }
 
