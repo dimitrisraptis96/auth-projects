@@ -108,6 +108,8 @@ function y = meanshift(x, h, varargin)
     % calculate mean-shift vector
     m = y_new - y;
     m(1:5,:);
+    m
+    return
     
     if opt.display && d == 2
       

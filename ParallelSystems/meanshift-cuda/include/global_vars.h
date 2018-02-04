@@ -1,6 +1,16 @@
 #ifndef GLOBAL_VARS_H_
 #define GLOBAL_VARS_H_
 
+// error handlers
+#define HANDLE_NULL( a ) {if (a == NULL) { \
+                            printf( "Host memory failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
+
+#define HANDLE_EOF( a ) {if (a == EOF) { \
+                            printf( "File reading failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
 
 #ifndef DATASET_PATH
 #define DATASET_PATH     "data/S1.txt"
@@ -27,7 +37,7 @@
 #endif
 
 #ifndef BANDWIDTH
-#define BANDWIDTH 500.0
+#define BANDWIDTH 100000.0
 #endif
 
 #ifndef TYPE_CPU
@@ -47,6 +57,6 @@ extern double **y;
 extern double **y_new;
 extern double **m;
 extern double **d;
-extern int **id;
+// extern int **id;
 
 #endif

@@ -53,27 +53,18 @@ void memory_allocation(){
   
   if (VERBOSE) printf("[INFO]: Allocating memory...\n");
 
-  x     = (double **) malloc(N * sizeof(double *));
-  y     = (double **) malloc(N * sizeof(double *));
-  y_new = (double **) malloc(N * sizeof(double *));
-  m     = (double **) malloc(N * sizeof(double *));
-  w     = (SparseData **)  malloc(N * sizeof(SparseData *));
-  nNbr  = (int *)          malloc(N * sizeof(int));
-
-  if (  (nNbr == NULL)  || (x == NULL) || (y == NULL) || 
-        (y_new == NULL) || (m == NULL) || (w==NULL) ) { 
-    perror("[ERROR]:"); exit(1);
-  }
+  HANDLE_NULL( (x     = (double **)     malloc(N * sizeof(double *))) );
+  HANDLE_NULL( (y     = (double **)     malloc(N * sizeof(double *))) );
+  HANDLE_NULL( (y_new = (double **)     malloc(N * sizeof(double *))) );
+  HANDLE_NULL( (m     = (double **)     malloc(N * sizeof(double *))) );
+  HANDLE_NULL( (w     = (SparseData **) malloc(N * sizeof(SparseData *))) );
+  HANDLE_NULL( (nNbr  = (int *)         malloc(N * sizeof(int))) );
 
   for (i=0; i<N; i++) {
-    x[i]      = (double *) malloc(D * sizeof(double));
-    y[i]      = (double *) malloc(D * sizeof(double));
-    y_new[i]  = (double *) malloc(D * sizeof(double));
-    m[i]      = (double *) malloc(D * sizeof(double));
-
-    if( (x[i] == NULL) || (y[i] == NULL) || (y_new[i] == NULL) || (m[i] == NULL) ) { 
-      perror("[ERROR]:"); exit(1);
-    }
+    HANDLE_NULL( (x[i]      = (double *) malloc(D * sizeof(double))) );
+    HANDLE_NULL( (y[i]      = (double *) malloc(D * sizeof(double))) );
+    HANDLE_NULL( (y_new[i]  = (double *) malloc(D * sizeof(double))) );
+    HANDLE_NULL( (m[i]      = (double *) malloc(D * sizeof(double))) );
   }
 }
 
@@ -101,36 +92,31 @@ void read_file(){
   int i,j;
 
   FILE * fp;
-  fp = fopen (DATASET_PATH, "r");
-
-  if (fp == NULL) { perror("[ERROR]: "); exit(1); }
+  HANDLE_NULL( (fp = fopen (DATASET_PATH, "r")) );
 
   for (i=0; i<N; i++) 
     for (j=0; j<D; j++)
-      if (EOF ==  fscanf(fp, "%lf", &x[i][j])) { perror("[ERROR]:"); exit(1); }
+      HANDLE_EOF( (fscanf(fp, "%lf", &x[i][j])) );
 
-  fclose(fp);
+  HANDLE_EOF( (fclose(fp)) );
 }
 
 void write_csv_file (char *message, double **a, const int ROW, const int COL){
   int i,j;
 
   FILE * fp;
-  fp = fopen (OUTPUT_PATH_SERIAL, "w");
+  HANDLE_NULL( (fp = fopen (OUTPUT_PATH_SERIAL, "w")) );
 
-  if (fp == NULL){ perror("[ERROR]: "); exit(1); }
-
-  fprintf(fp,"%s",message);
+  HANDLE_EOF( (fprintf(fp,"%s",message)) );
 
   for (i=0; i<ROW; i++) {
-    for (j=0; j<COL; j++)
-      if (EOF ==  fprintf(fp, "%lf, ", a[i][j])) {
-        perror("[ERROR]:"); exit(1);
-      }
-    fprintf(fp,"\n");
+    for (j=0; j<COL; j++){
+      HANDLE_EOF( (fprintf(fp, "%lf, ", a[i][j])) ); 
+    }
+    HANDLE_EOF( (fprintf(fp,"\n")) );
   }
 
-  fclose(fp);
+  HANDLE_EOF( (fclose(fp)) );
 }
 
 // TODO:
@@ -152,8 +138,7 @@ void init_arr(){
 
 
 void meanshift(){
-  clock_t start, end;
-  double cpu_time_used;
+  clock_t start;
 
   int iter=0;
   double norm = LDBL_MAX;
@@ -163,46 +148,37 @@ void meanshift(){
   while (norm > EPSILON){
     iter++;
 
-    //=========================================
-    start = clock();  
-
     // find distances between each row of y and the rows of x 
     // that are BANDWIDTH or less distant.
     // And calculate kernels for these distances.
+    start = clock();  
     rangesearch2sparse();
-
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("search: %f\n", cpu_time_used);
-
-    //=========================================
-    start = clock();
+    printf("\t\trangesearch2sparse: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // compute new y vector
-    matrix_mult();
-
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("mult: %f\n", cpu_time_used);
-    
-    //=========================================
     start = clock();
+    matrix_mult();
+    printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // normalize vector
+    start = clock();
     normalize();    
-
+    printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+    
     // calculate meanshift
+    start = clock();
     calc_meanshift();
+    printf("\t\tmeanshift: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // update y
+    start = clock();
     copy_2Darray(y_new, y,N,D);
+    printf("\t\tcopy: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // calculate Frobenius norm
+    start = clock();
     norm = frob_norm();
-
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("other: %f\n", cpu_time_used);
+    printf("\t\tnorm: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
     
     printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
   } 
@@ -214,26 +190,15 @@ void meanshift(){
 
 // ADDED: id array to prevent looping until N
 void rangesearch2sparse(){
-  int i,j,k;
-  double dist;
+  int i,j,k, *id;
+  double dist, *buffer;
 
-  // clock_t start, end;
-  // double cpu_time_used;
-
-  // malloc buffer for sparse matrix's rows
-  double *buffer = (double *) malloc(N*sizeof(double));
-  if(buffer == NULL) { perror("[ERROR]:");exit(1); }
-
-  // malloc temporary id's for each iteration of y rows
-  int *id = (int *) malloc(N*sizeof(int));
-  if(id == NULL) { perror("[ERROR]:");exit(1); }
+  // malloc buffer and id temporary arrays
+  HANDLE_NULL( (buffer = (double *) malloc(N*sizeof(double))) );
+  HANDLE_NULL( (id     = (int *)    malloc(N*sizeof(int)))    );
 
   for (i=0; i<N; i++){
     nNbr[i] = 0;
-    
-    /*
-    start = clock();
-    */
     
     for (j=0; j<N; j++){
       // make sure diagonal elements are 1
@@ -258,24 +223,18 @@ void rangesearch2sparse(){
         buffer[j]=0;
       }
     }
-    
-    /*
-    end = clock();
-    if (i==0){
-      cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-      printf("inside loop: %f\n", cpu_time_used);
-    }*/
-
     // now nNbr[i] contains the final number of x neighbours
 
-    w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
-    if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
+    // malloc sparse row i
+    free(w[i]);
+    HANDLE_NULL( (w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData))) );
 
     // first nNbr[i] elements of id array have the distances
     for (j=0; j<nNbr[i]; j++){
         w[i][j].xid      = id[j];
         w[i][j].distance = buffer[id[j]];
     }
+
   }
 
   free(buffer); free(id); // free temporary arrays
