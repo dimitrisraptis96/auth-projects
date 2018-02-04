@@ -11,7 +11,7 @@ const int threads_per_block = 256;
 const int blocks_per_grid = 32; 
 
 typedef struct {
-    int j;
+    int xid;
     double distance;
 } SparseData;
 
@@ -194,6 +194,9 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
 
 
 void meanshift(){
+  clock_t start, end;
+  double cpu_time_used;
+  
   int iter=0;
   double norm = DBL_MAX;
 
@@ -202,11 +205,30 @@ void meanshift(){
   
   while (norm > EPSILON){
     iter++;
+    
+    //======================================================
+    start = clock();
+
     // find distances and calculate kernels
     rangesearch2sparse();
 
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("rangesearch2sparse: %f\n", cpu_time_used);
+    //======================================================
+
+    //======================================================
+    start = clock();
     // compute new y vector
     gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_new_data,d_sparse);
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("mult: %f\n", cpu_time_used);
+    //======================================================
+
+    //======================================================
+    start = clock();
 
     // normalize vector
     gpu_normalize <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_sparse,d_y_new_data);    
@@ -220,6 +242,11 @@ void meanshift(){
     // calculate Frobenius norm
     gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_sum);
     norm = sqrt ( finish_reduction() );
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("other: %f\n", cpu_time_used);
+    //======================================================
 
     if (VERBOSE) printf("[INFO]: Iteration %d - error %lf\n", iter, norm);   
   }
@@ -289,10 +316,12 @@ __global__ void gpu_calc_distances
 
 void rangesearch2sparse(){
   int i,j, index, count=0;
+  int *id;
   double *buffer;
 
   // malloc buffer for sparse matrix's rows
   HANDLE_NULL( (buffer = (double *) malloc(N*sizeof(double))) );
+  HANDLE_NULL( (id = (int *) malloc(N*sizeof(int))) );
 
   for (i=0; i<N; i++){
     // find neighbours of y[i] row
@@ -301,23 +330,24 @@ void rangesearch2sparse(){
     // get buffer from device
     HANDLE_ERROR( cudaMemcpy(buffer, d_buffer, N*sizeof(double), cudaMemcpyDeviceToHost) );
     
-    // find neighbours
+    // find neighbours (including diagonal elements)
     nNbr[i] = 0;
     for(j=0;j<N;j++)
       if(buffer[j]>0){
-        nNbr[i] += 1;   // include diagonal elements too
-        count++;
+        id[nNbr[i]] = j;
+        nNbr[i]++;
+        count++;    // total elements of final sparse array
       }
 
     index = 0;
     HANDLE_NULL( (w[i] = (SparseData *) malloc(nNbr[i]*sizeof(SparseData))) );
 
-    for (j=0; j<N; j++){
-      if (buffer[j] > 0){
-        w[i][index].j        = j;
-        w[i][index].distance = buffer[j];
-        index++;
-      }
+    for (j=0; j<nNbr[i]; j++){
+      // if (buffer[j] > 0){
+        w[i][j].xid      = id[j];
+        w[i][j].distance = buffer[id[j]];
+        // index++;
+      // }
     }
   }
   free(buffer);
@@ -354,7 +384,7 @@ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
     y[tid] = 0;
     // multiply only the sparse element (all the other are 0's)
     for(k=0; k<nNbr[i]; k++)
-      y[tid] += w[sparse_offset + k].distance * x[ (w[sparse_offset + k].j * D_SIZE)/*row offset of x*/ + j ];
+      y[tid] += w[sparse_offset + k].distance * x[ (w[sparse_offset + k].xid * D_SIZE)/*row offset of x*/ + j ];
 
     tid += blockDim.x*gridDim.x;
   }

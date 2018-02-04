@@ -10,8 +10,9 @@ double **y;
 double **y_new;
 double **m;
 
+
 typedef struct {
-    int j;
+    int xid;
     double distance;
 } SparseData;
 
@@ -151,6 +152,9 @@ void init_arr(){
 
 
 void meanshift(){
+  clock_t start, end;
+  double cpu_time_used;
+
   int iter=0;
   double norm = LDBL_MAX;
 
@@ -159,13 +163,30 @@ void meanshift(){
   while (norm > EPSILON){
     iter++;
 
+    //=========================================
+    start = clock();  
+
     // find distances between each row of y and the rows of x 
     // that are BANDWIDTH or less distant.
     // And calculate kernels for these distances.
     rangesearch2sparse();
 
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("search: %f\n", cpu_time_used);
+
+    //=========================================
+    start = clock();
+
     // compute new y vector
     matrix_mult();
+
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("mult: %f\n", cpu_time_used);
+    
+    //=========================================
+    start = clock();
 
     // normalize vector
     normalize();    
@@ -179,6 +200,10 @@ void meanshift(){
     // calculate Frobenius norm
     norm = frob_norm();
 
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("other: %f\n", cpu_time_used);
+    
     printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
   } 
 
@@ -187,20 +212,36 @@ void meanshift(){
   free_memory();
 }
 
-
+// ADDED: id array to prevent looping until N
 void rangesearch2sparse(){
-  int i,j,k, index;
+  int i,j,k;
   double dist;
+
+  // clock_t start, end;
+  // double cpu_time_used;
 
   // malloc buffer for sparse matrix's rows
   double *buffer = (double *) malloc(N*sizeof(double));
   if(buffer == NULL) { perror("[ERROR]:");exit(1); }
 
+  // malloc temporary id's for each iteration of y rows
+  int *id = (int *) malloc(N*sizeof(int));
+  if(id == NULL) { perror("[ERROR]:");exit(1); }
+
   for (i=0; i<N; i++){
+    nNbr[i] = 0;
+    
+    /*
+    start = clock();
+    */
+    
     for (j=0; j<N; j++){
       // make sure diagonal elements are 1
       if (i==j) {
-        buffer[j] = 1; nNbr[i]++; 
+        buffer[j] = 1;  
+        //add index of distance to id array
+        id[nNbr[i]] = j; 
+        nNbr[i]++;
         continue;
       }
 
@@ -208,6 +249,8 @@ void rangesearch2sparse(){
       dist = euclidean_distance(i,j);
       if (dist < BANDWIDTH*BANDWIDTH){  // radius^2 because I don't use sqrt() at dist
         buffer[j]= gaussian_kernel(dist);
+        //add index of distance
+        id[nNbr[i]] = j; 
         nNbr[i]++;
       }
       // unnecessary points
@@ -215,19 +258,27 @@ void rangesearch2sparse(){
         buffer[j]=0;
       }
     }
+    
+    /*
+    end = clock();
+    if (i==0){
+      cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+      printf("inside loop: %f\n", cpu_time_used);
+    }*/
+
+    // now nNbr[i] contains the final number of x neighbours
 
     w[i]  = (SparseData *) malloc(nNbr[i] * sizeof(SparseData));
     if(w[i]==NULL) {perror("[ERROR]: "); exit(1);}
 
-    index = 0;
-    for (j=0; j<N; j++){
-      if (buffer[j] > 0){
-        w[i][index].j        = j;
-        w[i][index].distance = buffer[j];
-        index++;
-      }
+    // first nNbr[i] elements of id array have the distances
+    for (j=0; j<nNbr[i]; j++){
+        w[i][j].xid      = id[j];
+        w[i][j].distance = buffer[id[j]];
     }
   }
+
+  free(buffer); free(id); // free temporary arrays
 }
 
 double euclidean_distance(const int first, const int second){
@@ -244,7 +295,7 @@ void matrix_mult() {
     for(j=0; j<D; j++){
       y_new[i][j] = 0;
       for(k=0; k<nNbr[i]; k++){
-        y_new[i][j] += w[i][k].distance * x[ w[i][k].j ][j];
+        y_new[i][j] += w[i][k].distance * x[ w[i][k].xid ][j];
       }
     }
   }
