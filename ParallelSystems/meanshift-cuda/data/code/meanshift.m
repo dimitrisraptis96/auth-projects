@@ -95,11 +95,13 @@ function y = meanshift(x, h, varargin)
     % make sure diagonal elements are 1
     W = W + spdiags( ones(n,1), 0, n, n );
 %     tElapsed = toc;
+   
 
 %     fprintf('DONE in %.2f sec\n', tElapsed);
     
     % compute new y vector
     y_new = W * x;
+    
     
     % normalize vector
     y_new = y_new ./ sum( W, 2 );
@@ -107,7 +109,6 @@ function y = meanshift(x, h, varargin)
     y_new(1:5,:);
     % calculate mean-shift vector
     m = y_new - y;
-    m(1:5,:);
     m
     return
     

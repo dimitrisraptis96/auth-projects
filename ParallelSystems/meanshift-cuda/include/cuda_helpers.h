@@ -33,8 +33,9 @@ static void HandleError( cudaError_t err,
 __global__ void gpu_init_arr(int *nNbr, double *x, double *y, double *m);
 __global__ void gpu_calc_distances(int y_row, double h, double *buffer, double **y, double **x);
 __global__ void gpu_calc_meanshift(double *m, double *y_new, double *y);
-__global__ void gpu_copy_2Darray(double *source, double *destination);
-__global__ void gpu_frob_norm_shared(double *m, double *result);
+__global__ void gpu_copy_2Darray(double *src, double *dst);
+__global__ void gpu_frob_norm_shared(double *m, double *final);
+
 
 #endif
 
