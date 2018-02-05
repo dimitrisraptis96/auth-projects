@@ -8,7 +8,17 @@
 #include <math.h>
 #include <time.h>
 
+// error handlers
+#define HANDLE_NULL( a ) {if (a == NULL) { \
+                            printf( "Host memory failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
 
+#define HANDLE_EOF( a ) {if (a == EOF) { \
+                            printf( "File reading failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
+                            
 void serial(void);
 
 void init_serial(void);
@@ -23,28 +33,28 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL);
 
 int validate(void);
 
-void init_arr(void);
+static void init_arr(void);
 
-void meanshift(void);
+static void meanshift(void);
 
-void rangesearch2sparse(void);
+static void rangesearch2sparse(void);
 
-void matrix_mult(void);
+static void matrix_mult(void);
 
-void normalize(void);
+static void normalize(void);
 
-double sum_of_row(const int row_index);
+static double sum_of_row(const int row_index);
 
-double frob_norm(void);
+static double frob_norm(void);
 
-void calc_meanshift(void);
+static void calc_meanshift(void);
 
-void copy_2Darray(double **source, double **destination, const int ROW, const int COL);
+static void copy_2Darray(double **source, double **destination, const int ROW, const int COL);
 
-void print_2Darray(double **a, const int ROW, const int COL);
+static void print_2Darray(double **a, const int ROW, const int COL);
 
-double gaussian_kernel(const double dist);
+static double gaussian_kernel(const double dist);
 
-double euclidean_distance(const int first, const int second);
+static double euclidean_distance(const int first, const int second);
 
 #endif

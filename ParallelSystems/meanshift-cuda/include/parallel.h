@@ -8,6 +8,17 @@
 #include <math.h>
 #include <time.h>
 
+// error handlers
+#define HANDLE_NULL( a ) {if (a == NULL) { \
+                            printf( "Host memory failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
+
+#define HANDLE_EOF( a ) {if (a == EOF) { \
+                            printf( "File reading failed in %s at line %d\n", \
+                                    __FILE__, __LINE__ ); \
+                            exit( EXIT_FAILURE );}}
+
 void init_parallel();
 void read_file();
 void cpu_malloc();

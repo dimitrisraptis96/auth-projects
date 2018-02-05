@@ -125,7 +125,7 @@ int validate(){
   return 1;
 }
 
-void init_arr(){
+static void init_arr(){
   int i,j;
   for (i=0; i<N; i++){
     nNbr[i] = 0;
@@ -137,7 +137,7 @@ void init_arr(){
 }
 
 
-void meanshift(){
+static void meanshift(){
   clock_t start;
 
   int iter=0;
@@ -189,7 +189,7 @@ void meanshift(){
 }
 
 // ADDED: id array to prevent looping until N
-void rangesearch2sparse(){
+static void rangesearch2sparse(){
   int i,j,k, *id;
   double dist, *buffer;
 
@@ -240,7 +240,7 @@ void rangesearch2sparse(){
   free(buffer); free(id); // free temporary arrays
 }
 
-double euclidean_distance(const int first, const int second){
+static double euclidean_distance(const int first, const int second){
   int j;
   double dist = 0;
   for (j=0; j<D; j++)
@@ -248,7 +248,7 @@ double euclidean_distance(const int first, const int second){
   return dist;
 }
 
-void matrix_mult() {
+static void matrix_mult() {
   int i,j,k;
   for(i=0; i<N; i++){
     for(j=0; j<D; j++){
@@ -260,7 +260,7 @@ void matrix_mult() {
   }
 }
 
-void normalize(){
+static void normalize(){
   int i,j;
   double s=0;
 
@@ -271,7 +271,7 @@ void normalize(){
   }
 }
 
-double sum_of_row(const int row_index){
+static double sum_of_row(const int row_index){
   int j;
   double sum=0;
   
@@ -280,7 +280,7 @@ double sum_of_row(const int row_index){
   return sum;
 }
 
-double frob_norm(){
+static double frob_norm(){
   int i,j;
   double norm=0;
   for (i=0; i<N; i++)
@@ -289,7 +289,7 @@ double frob_norm(){
   return sqrt(norm);
 }
 
-void calc_meanshift(){
+static void calc_meanshift(){
   int i,j;
   for (i=0;i<N;i++)
     for (j=0; j<D; j++)
@@ -297,7 +297,7 @@ void calc_meanshift(){
 
 }
 
-void copy_2Darray(double **source, 
+static void copy_2Darray(double **source, 
                   double **destination, 
                   const int ROW, 
                   const int COL)
@@ -308,7 +308,7 @@ void copy_2Darray(double **source,
       destination[i][j] = source[i][j];     
 }
 
-void print_2Darray(double **a, const int ROW, const int COL){
+static void print_2Darray(double **a, const int ROW, const int COL){
   int i,j;
   for (i=0;i<ROW;i++){
     for (j=0; j<COL; j++){
@@ -318,7 +318,7 @@ void print_2Darray(double **a, const int ROW, const int COL){
   }
 }
 
-double gaussian_kernel(const double dist){
+static double gaussian_kernel(const double dist){
     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
 
