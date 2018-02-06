@@ -165,7 +165,12 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
 
   for (i=0; i<ROW; i++) {
     for (j=0; j<COL; j++){
-      HANDLE_EOF( fprintf(fp, "%lf, ", a[i][j]) ); 
+      if (j == COL-1){
+        HANDLE_EOF( fprintf(fp, "%lf", a[i][j]) );
+      } 
+      else {
+        HANDLE_EOF( fprintf(fp, "%lf, ", a[i][j]) ); 
+      }
     }
     HANDLE_EOF( fprintf(fp,"\n") );
   }
@@ -379,7 +384,7 @@ void rangesearch2sparse(){
     // printf("%lf\n",sum[i] );
   
   // free memory
-  // for(i=0;i<N;i++)  free(w[i]);
+  for(i=0;i<N;i++)  free(w[i]);
   free(nNbr); free(sum); free(w); free(buffer); free(id); // free memory
 }
 
@@ -392,8 +397,10 @@ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
   
 
   while(tid < N_SIZE*D_SIZE){
+    // i and j indexes of flattened 2D array
     i = tid/D_SIZE;
     j = tid%D_SIZE;
+    
     //find the dynamic offset of rows that depend on the number of previous neighbours
     sparse_offset=0;
     for (k=0;k<i;k++)
@@ -412,12 +419,13 @@ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w)
 __global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new, double *sum) 
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int i,sparse_offset=0;
-  double dblsum=0;
+  int i,sparse_offset;
+  // double dblsum=0;
   
 
   while(tid < N_SIZE*D_SIZE) {
     i = tid/D_SIZE;
+
     //find the dynamic offset of rows that depend on the number of previous neighbours
     sparse_offset=0;
     for (int k=0;k<i;k++)
@@ -426,15 +434,42 @@ __global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new, double *s
     // TODO: sum can be shared if D>>2
 
     // find sum of current row
-    dblsum = 0;
-    for (int k=0; k<nNbr[i]; k++)
-      dblsum += w[sparse_offset+k].distance; 
+    // dblsum = 0;
+    // for (int k=0; k<nNbr[i]; k++)
+    //   dblsum += w[sparse_offset+k].distance; 
 
-    y_new[tid] /= dblsum;
+    y_new[tid] /= sum[i];
     tid += gridDim.x*blockDim.x;
   }
 }
 
+/*__global__ void
+gpuPdist(double *out, double *in, int n, int m){
+ extern __shared__ double Rs[];
+ double tmp, dist;
+ int myRow = blockIdx.x*256 + threadIdx.x;
+  
+ for(int r=0;r<N_SIZE;r++){ //outer loop
+   dist = 0;  
+   // load row[r] of in array into shared memory
+   for(int i=0;i<=D_SIZE/256;i++){
+     if (i*256+threadIdx.x < D_SIZE)
+       Rs[i*256 + threadIdx.x] = in[r*D_SIZE + i*256 + threadIdx.x];
+   }
+   __syncthreads();
+  
+   // calculate distances
+   for(int i=0; i<D_SIZE && myRow<N_SIZE; i++){
+     tmp = Rs[i] - in[myRow*D_SIZE + i];
+     dist += tmp*tmp;
+   }
+
+   if (myRow<N_SIZE)
+     out[myRow*N_SIZE+r] = dist; 
+   __syncthreads();
+ }
+}
+*/
 __global__ void gpu_calc_meanshift(double *m, double *y_new, double *y)
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;

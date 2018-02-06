@@ -52,7 +52,7 @@ fprintf('...reading data...\n')
 % figure('name', 'original_data')
 % scatter(x(:,1),x(:,2), 8, l);
 
-x = csvread ('../S1.csv');
+x = csvread ('../5000_2.csv');
 h = 100000;
 
 figure('name', 'original_data')
