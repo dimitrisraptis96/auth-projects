@@ -31,6 +31,14 @@
 #define TYPE_GPU	2
 #endif
 
+// version of cuda implementation
+#ifndef SPARSE_VERSION
+#define SPARSE_VERSION		1
+#endif
+#ifndef EXHAUSTIVE_VERSION
+#define EXHAUSTIVE_VERSION	2
+#endif
+
 extern int N;
 extern int D;
 

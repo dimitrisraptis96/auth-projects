@@ -19,15 +19,17 @@
                                     __FILE__, __LINE__ ); \
                             exit( EXIT_FAILURE );}}
 
-void init_parallel();
+void init_parallel(int version);
+int choose_version();
+double get_global_mem();
 void read_file();
 void cpu_malloc();
-void gpu_malloc ();
+void gpu_malloc (int version);
 void move_data_to_gpu();
-void meanshift();
+void cuda_meanshift(int version);
 void rangesearch2sparse();
 double finish_reduction();
-void gpu_free_memory();
+void gpu_free_memory(int version);
 void cpu_free_memory();
 void print_2Darray(double **a, const int ROW, const int COL);
 void write_csv_file (char *message, double **a, const int ROW, const int COL);

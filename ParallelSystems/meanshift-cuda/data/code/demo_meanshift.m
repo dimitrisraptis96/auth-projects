@@ -28,7 +28,7 @@ varL     = 'L';
 h = 1;
 optMeanShift.epsilon = 1e-4*h;
 optMeanShift.verbose = true;
-optMeanShift.display = false;
+optMeanShift.display = true;
 
 
 %% (BEGIN)
@@ -52,8 +52,9 @@ fprintf('...reading data...\n')
 % figure('name', 'original_data')
 % scatter(x(:,1),x(:,2), 8, l);
 
-x = csvread ('../5000_2.csv');
-h = 100000;
+x = csvread ('../7196_21.csv');
+h = 0.5;
+optMeanShift.epsilon = 1;
 
 figure('name', 'original_data')
 scatter(x(:,1),x(:,2));
