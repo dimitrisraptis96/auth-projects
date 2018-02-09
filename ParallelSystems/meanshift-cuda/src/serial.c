@@ -17,8 +17,11 @@ typedef struct {
 SparseData **w;
 
 void serial(){
+  printf("=================================\n");
   printf("[INFO]: SERIAL-CPU IMPLEMENTATION\n");
   printf("=================================\n");
+  printf("[INFO]: bandwidth=%lf\n",BANDWIDTH);
+  printf("[INFO]: epsilon=%lf\n\n",EPSILON);
 
   struct timeval startwtime, endwtime;
   double seq_time;
@@ -34,10 +37,7 @@ void serial(){
   seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
 
-  /*printf("\n\nIs test PASSed? %s\n\n", validate_serial()?"YES":"NO");
-  printf("===============================================\n\n");*/
-  printf("\n\n[INFO]: serial meanshift wall clock time = %f\n", seq_time);
-
+  printf("\n\n[FINAL]: serial meanshift wall clock time = %f\n\n", seq_time);
 }
 
 void init_serial(){
@@ -49,7 +49,7 @@ void init_serial(){
 void memory_allocation(){
   int i;
   
-  if (VERBOSE) printf("[INFO]: allocate memory...\n");
+  if (VERBOSE) printf("[INFO]: allocate memory...\n\n");
 
   HANDLE_NULL( (x     = (double **)     malloc(N * sizeof(double *))) );
   HANDLE_NULL( (y     = (double **)     malloc(N * sizeof(double *))) );
@@ -68,7 +68,7 @@ void memory_allocation(){
 
 void free_memory(){
   int i;
-  if (VERBOSE) printf("[INFO]: deallocate memory...\n");
+  if (VERBOSE) printf("\n[INFO]: deallocate memory...\n");
   //free() data
   for (i=0; i<N; i++){
     free(x[i]);
@@ -156,7 +156,7 @@ static void meanshift(){
     // calculate Frobenius norm
     norm = frob_norm();
     
-    printf("[FINAL]: iteration %d - error %lf\n", iter, norm);
+    printf("[INFO]: iteration %d - error %lf\n", iter, norm);
   } 
 
   if (VERBOSE)  write_csv_file("",y_new,N,D);

@@ -32,7 +32,8 @@ void parallel(){
   printf("===============================\n");
   printf("[INFO]: CUDA-GPU IMPLEMENTATION\n");
   printf("===============================\n");
-  printf("[INFO]: calculate meanshift with bandwidth=%lf and epsilon=%lf\n",BANDWIDTH,EPSILON);
+  printf("[INFO]: bandwidth=%lf\n",BANDWIDTH);
+  printf("[INFO]: epsilon=%lf\n\n",EPSILON);
 
   struct timeval startwtime, endwtime;
   double seq_time;
@@ -50,11 +51,15 @@ void parallel(){
   seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
 
-  printf("\n\n[INFO]: parallel meanshift wall clock time = %f\n", seq_time);
-
+  printf("\n\n[FINAL]: parallel meanshift wall clock time = %f\n\n", seq_time);
 }
 
 void init_parallel(int version){
+  if (VERBOSE) 
+    printf ("[INFO]: VERSION: %s & %s\n\n", 
+          (version==VERSION_EXHAUSTIVE) ? "exhaustive": "sparse",
+          (USE_SHARED)                  ? "shared"    : "non-shared");
+  
   cpu_malloc();
   gpu_malloc(version);
   read_file();
@@ -63,18 +68,14 @@ void init_parallel(int version){
 
 // choose version according to N value and global memory size
 int choose_version(){
-  double bytes = get_global_mem();
-  if (VERBOSE) printf( "[INFO]: double device global memory size: %lf bytes\n", bytes); //193_216_512 bytes (diades)
-  
-  return (N*N > bytes/2) ? SPARSE_VERSION : EXHAUSTIVE_VERSION; 
-}
-
-// return number of allowed double allocation
-double get_global_mem(){
+  // get device props
   cudaDeviceProp  prop;
   HANDLE_ERROR( cudaGetDeviceProperties( &prop, 0 ) );
 
-  return ( prop.totalGlobalMem / sizeof(double) );
+  double bytes = prop.totalGlobalMem / sizeof(double);
+  //if (VERBOSE) printf( "[INFO]: device global memory size: %lf doubles\n", bytes); //193_216_512 bytes (diades)
+  
+  return (N*N > bytes/2) ? VERSION_SPARSE : VERSION_EXHAUSTIVE; 
 }
 
 // ====================================================================
@@ -107,7 +108,7 @@ void gpu_malloc (int version){
 
   if(VERBOSE) printf("[INFO]: allocate device memory..\n");
 
-  if(version == EXHAUSTIVE_VERSION){
+  if(version == VERSION_EXHAUSTIVE){
     // malloc d_Pdist
     size = N * N * sizeof(double);
     HANDLE_ERROR( cudaMalloc((void**)&d_Pdist, size) );
@@ -135,7 +136,7 @@ void gpu_malloc (int version){
 
 
 void move_data_to_gpu(){
-  if(VERBOSE) printf("[INFO]: move data to device..\n");
+  if(VERBOSE) printf("[INFO]: move data to device..\n\n");
 
   // move to device constant variables N_SIZE and D_SIZE
   HANDLE_ERROR( cudaMemcpyToSymbol (N_SIZE, &N, sizeof(int)) );
@@ -154,7 +155,7 @@ void cpu_free_memory(){
 }
 
 void gpu_free_memory(int version){
-  if (VERBOSE) printf("[INFO]: deallocate gpu memory...\n");
+  if (VERBOSE) printf("\n[INFO]: deallocate gpu memory...\n");
 
   // free gpu memory
   HANDLE_ERROR( cudaFree(d_x_data) );
@@ -164,11 +165,11 @@ void gpu_free_memory(int version){
   HANDLE_ERROR( cudaFree(d_reduction) );
   HANDLE_ERROR( cudaFree(d_nNbr) );
   switch (version){
-    case EXHAUSTIVE_VERSION:
+    case VERSION_EXHAUSTIVE:
       HANDLE_ERROR( cudaFree(d_Pdist) );
       break;
 
-    case SPARSE_VERSION:
+    case VERSION_SPARSE:
       HANDLE_ERROR( cudaFree(d_sparse) );
       break;
   }
@@ -223,7 +224,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
 // ====================================================================
 
 void cuda_meanshift(int version){
-  clock_t start;
+  // clock_t start;
   
   int iter=0;
   double norm = DBL_MAX;
@@ -236,67 +237,72 @@ void cuda_meanshift(int version){
 
     switch(version){
 
-      case EXHAUSTIVE_VERSION:
-        if (iter == 1) printf ("[INFO]: choose exhaustive version\n");
+      case VERSION_EXHAUSTIVE:
 
         // find distances and calculate kernels
-        start = clock();
+        // start = clock();
         gpu_pdist<<<blocks_per_grid, threads_per_block>>>(BANDWIDTH,d_Pdist, d_y_data, d_x_data );
-        printf("\t\tpdist: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\tpdist: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
         // compute new y vector
-        start = clock();
+        // start = clock();
         gpu_matrix_mult_exh <<<blocks_per_grid, threads_per_block>>>(d_x_data,d_y_new_data,d_Pdist);
-        printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
         // normalize vector
-        start = clock();
+        // start = clock();
         gpu_normalize_exh <<<blocks_per_grid, threads_per_block>>>(d_y_new_data,d_Pdist);    
-        printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
         
         break;
 
-      case SPARSE_VERSION:
+      case VERSION_SPARSE:
         if (iter == 1) printf ("[INFO]: choose sparse version\n");
         
         // find distances and calculate kernels
-        start = clock();
+        // start = clock();
         rangesearch2sparse();
-        printf("\t\trangesearch2sparse: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\trangesearch2sparse: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
         // compute new y vector
-        start = clock();
+        // start = clock();
         gpu_matrix_mult <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_x_data,d_y_new_data,d_sparse);
-        printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
         // normalize vector
-        start = clock();
+        // start = clock();
         gpu_normalize <<<blocks_per_grid, threads_per_block>>>(d_nNbr,d_sparse,d_y_new_data,d_sum);    
-        printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+        // printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
         
         break;
     }
 
     // calculate meanshift
-    start = clock();
+    // start = clock();
     gpu_calc_meanshift <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_y_new_data,d_y_data);
-    printf("\t\tmeanshift: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+    // printf("\t\tmeanshift: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
     
     // update y
-    start = clock();
+    // start = clock();
     gpu_copy_2Darray <<<blocks_per_grid, threads_per_block>>>(d_y_new_data, d_y_data);
-    printf("\t\tcopy: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+    // printf("\t\tcopy: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
     
+
     // calculate Frobenius norm
-    start = clock();
-    gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_reduction);
-    printf("\t\tnorm: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+    // start = clock();
+    (USE_SHARED) ? 
+          // shared norm
+          gpu_frob_norm_shared <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_reduction):
+          //non-shared norm
+          gpu_frob_norm        <<<blocks_per_grid, threads_per_block>>>(d_m_data,d_sum);
 
-    start = clock();
+    // printf("\t\tnorm: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+
+    // start = clock();
     norm = sqrt ( finish_reduction() );
-    printf("\t\tnorm-serial: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
+    // printf("\t\tnorm-serial: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
-    if (VERBOSE) printf("[FINAL]: iteration %d - error %lf\n\n", iter, norm);   
+    if (VERBOSE) printf("[INFO]: iteration %d - error %lf\n", iter, norm);   
   }
 
   // copy results back to host
@@ -387,7 +393,6 @@ void gpu_matrix_mult_exh(double *x, double *y, double *dist)
 }
 
 
-// TODO: reduction using shared memory or sum
 __global__ void gpu_normalize_exh(double *y_new, double *dist) 
 {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -398,7 +403,6 @@ __global__ void gpu_normalize_exh(double *y_new, double *dist)
     i = tid/D_SIZE;
 
     sum = 0;
-    //TODO: reduction here or sum[] array
     for (int k=0; k<N_SIZE; k++)
       sum += dist[i*N_SIZE + k]; 
 
@@ -594,11 +598,20 @@ __global__ void gpu_copy_2Darray(double *src, double *dst)
   }
 }
 
-__global__ void gpu_frob_norm_non_shared(double *m, double *final){
+__global__ void gpu_frob_norm(double *m, double *final){
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
+  while (tid < N_SIZE){
+    double sum = 0;
+    for (int i=0;i<D_SIZE;i++){
+      sum += m[tid*D_SIZE+i]*m[tid*D_SIZE+i];
+    }
+    final[tid] = sum;
+
+    tid += blockDim.x*gridDim.x;
+  }
 }
 
-// TODO: non-shared implementation (use code from gpu_normalize)
 __global__ void gpu_frob_norm_shared(double *m, double *final){
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -635,16 +648,27 @@ __global__ void gpu_frob_norm_shared(double *m, double *final){
 
 // calculate last step of reduction on CPU because it's more efficient
 double finish_reduction(){
-  double  sum, *result;
-  
-  HANDLE_NULL( (result = (double *) malloc(blocks_per_grid * sizeof(double))) );
+  double  sum, *result, *device;
+  int size;
+
+  // decide the size and the device array according to shared option
+  if (USE_SHARED) {
+    size   = blocks_per_grid;
+    device = d_reduction;
+  } 
+  else {
+    size   = N;
+    device = d_sum;
+  }
+
+  HANDLE_NULL( (result = (double *) malloc(size * sizeof(double))) );
 
   HANDLE_ERROR( cudaMemcpy( result,
-                            d_reduction,
-                            blocks_per_grid*sizeof(double),
+                            device,
+                            size*sizeof(double),
                             cudaMemcpyDeviceToHost ) );
   sum = 0;
-  for (int i=0; i<blocks_per_grid; i++){
+  for (int i=0; i<size; i++){
       sum += result[i];
   }
   free(result);

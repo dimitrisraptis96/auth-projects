@@ -7,12 +7,11 @@
 int N;
 int D;
 int TYPE;
-
 double BANDWIDTH;
 double EPSILON;
-
 char *DATASET_PATH;
 
+int USE_SHARED;
 
 int main (int argc, char **argv) {
 
@@ -28,7 +27,7 @@ void set_args(int argc, char **argv){
     printf("==============================================\n");
     printf("Usage: Serial implementation of knn algorithm.\n");
     printf("==============================================\n");
-    printf("arg[1] = TYPE ==> type of implementation (1-->CPU 2-->GPU shared 3-->GPU non-shared)\n");
+    printf("arg[1] = TYPE ==> type of implementation (1)CPU 2)GPU shared 3)GPU non-shared)\n");
     printf("arg[2] = PATH ==> path to dataset .txt\n");
     printf("arg[3] = BAND ==> bandwidth\n");
     printf("arg[4] = N    ==> number of points\n");
@@ -62,8 +61,6 @@ void check_args() {
 
 //Choose implementation to execute
 void choose_type(){
-int USE_SHARED;
-  
   switch(TYPE) {
     case TYPE_CPU:
       serial();
