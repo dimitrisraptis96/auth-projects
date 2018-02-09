@@ -12,4 +12,6 @@ void choose_type(void);
 
 int main(int argc, char **argv);
 
+extern void parallel();
+
 #endif

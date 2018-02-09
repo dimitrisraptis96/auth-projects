@@ -1,8 +1,6 @@
 #include "../include/serial.h"
 #include "../include/global_vars.h"
 
-// TODO: inline optimization
-
 int *nNbr;
 
 double **x;
@@ -20,7 +18,7 @@ SparseData **w;
 
 void serial(){
   printf("[INFO]: SERIAL-CPU IMPLEMENTATION\n");
-  printf("=============================\n");
+  printf("=================================\n");
 
   struct timeval startwtime, endwtime;
   double seq_time;
@@ -38,7 +36,7 @@ void serial(){
 
   /*printf("\n\nIs test PASSed? %s\n\n", validate_serial()?"YES":"NO");
   printf("===============================================\n\n");*/
-  printf("\n\n[INFO]:Serial meanshift wall clock time = %f\n", seq_time);
+  printf("\n\n[INFO]: serial meanshift wall clock time = %f\n", seq_time);
 
 }
 
@@ -51,7 +49,7 @@ void init_serial(){
 void memory_allocation(){
   int i;
   
-  if (VERBOSE) printf("[INFO]: Allocating memory...\n");
+  if (VERBOSE) printf("[INFO]: allocate memory...\n");
 
   HANDLE_NULL( (x     = (double **)     malloc(N * sizeof(double *))) );
   HANDLE_NULL( (y     = (double **)     malloc(N * sizeof(double *))) );
@@ -70,7 +68,7 @@ void memory_allocation(){
 
 void free_memory(){
   int i;
-  if (VERBOSE) printf("[INFO]: Deallocating memory...\n");
+  if (VERBOSE) printf("[INFO]: deallocate memory...\n");
   //free() data
   for (i=0; i<N; i++){
     free(x[i]);
@@ -119,12 +117,6 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   HANDLE_EOF( (fclose(fp)) );
 }
 
-// TODO:
-int validate(){
-
-  return 1;
-}
-
 static void init_arr(){
   int i,j;
   for (i=0; i<N; i++){
@@ -138,8 +130,6 @@ static void init_arr(){
 
 
 static void meanshift(){
-  clock_t start;
-
   int iter=0;
   double norm = LDBL_MAX;
 
@@ -148,39 +138,25 @@ static void meanshift(){
   while (norm > EPSILON){
     iter++;
 
-    // find distances between each row of y and the rows of x 
-    // that are BANDWIDTH or less distant.
-    // And calculate kernels for these distances.
-    start = clock();  
+    // find distances and calculate sparse
     rangesearch2sparse();
-    printf("\t\trangesearch2sparse: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // compute new y vector
-    start = clock();
     matrix_mult();
-    printf("\t\tmatrix_mult: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // normalize vector
-    start = clock();
     normalize();    
-    printf("\t\tnormalize: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
     
     // calculate meanshift
-    start = clock();
     calc_meanshift();
-    printf("\t\tmeanshift: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // update y
-    start = clock();
     copy_2Darray(y_new, y,N,D);
-    printf("\t\tcopy: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
     // calculate Frobenius norm
-    start = clock();
     norm = frob_norm();
-    printf("\t\tnorm: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
     
-    printf("[INFO]: Iteration %d - error %lf\n", iter, norm);
+    printf("[FINAL]: iteration %d - error %lf\n", iter, norm);
   } 
 
   if (VERBOSE)  write_csv_file("",y_new,N,D);

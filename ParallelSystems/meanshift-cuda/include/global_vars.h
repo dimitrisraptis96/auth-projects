@@ -1,34 +1,37 @@
 #ifndef GLOBAL_VARS_H_
 #define GLOBAL_VARS_H_
 
-#ifndef DATASET_PATH
-#define DATASET_PATH     "data/5000_2.txt"
-// #define DATASET_PATH     "data/600_2.txt"
-#endif
+// #ifndef DATASET_PATH
+// #define DATASET_PATH	     "dataset/txt/1024_512.txt"
+// #endif
 #ifndef OUTPUT_PATH_SERIAL
-#define OUTPUT_PATH_SERIAL	 	"data/serial.csv"
+#define OUTPUT_PATH_SERIAL	 "results/serial.csv"
 #endif
 #ifndef OUTPUT_PATH_PARALLEL
-#define OUTPUT_PATH_PARALLEL 	 "data/parallel.csv"
+#define OUTPUT_PATH_PARALLEL "results/parallel.csv"
 #endif
 
 #ifndef VERBOSE
 #define VERBOSE 1
 #endif
 
-#ifndef EPSILON
-#define EPSILON 1e-4
-#endif
+// #ifndef EPSILON
+// #define EPSILON 1e-4*BANDWIDTH
+// #endif
 
-#ifndef BANDWIDTH
-#define BANDWIDTH 100000.0
-#endif
+// #ifndef BANDWIDTH
+// #define BANDWIDTH 10.0
+// #endif
 
+// type of implementation
 #ifndef TYPE_CPU
 #define TYPE_CPU	1
 #endif
-#ifndef TYPE_GPU
-#define TYPE_GPU	2
+#ifndef TYPE_GPU_SHARED
+#define TYPE_GPU_SHARED	2
+#endif
+#ifndef TYPE_GPU_NON_SHARED
+#define TYPE_GPU_NON_SHARED	3
 #endif
 
 // version of cuda implementation
@@ -41,14 +44,12 @@
 
 extern int N;
 extern int D;
+extern double BANDWIDTH;
+extern double EPSILON;
+extern char *DATASET_PATH;
 
-extern int *nNBr;
+extern int USE_SHARED;
 
-extern double **x;
-extern double **y;
-extern double **y_new;
-extern double **m;
-extern double **d;
-// extern int **id;
+
 
 #endif

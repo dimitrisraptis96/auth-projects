@@ -1,6 +1,6 @@
 #include "../include/parallel.h"
 #include "../include/global_vars.h"
-#include "../include/cuda_helpers.h"
+#include "../include/kernels.cuh"
 
 // constant device N and D
 __device__ __constant__ int N_SIZE; 
@@ -19,12 +19,11 @@ typedef struct {
 double *arr_data, **arr;
 
 // device copies
-double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data;
-double *d_reduction, *d_sum;
-double *d_Pdist;
+double *d_x_data,*d_y_data,*d_y_new_data,*d_m_data,*d_reduction, *d_sum, *d_Pdist;
 int *d_nNbr;
 SparseData *d_sparse; 
 
+// declare them here because they include SparseData struct
 __global__ void gpu_matrix_mult(int *nNbr, double *x, double *y, SparseData *w);
 __global__ void gpu_normalize(int *nNbr, SparseData *w, double *y_new, double *sum);
 
@@ -33,6 +32,7 @@ void parallel(){
   printf("===============================\n");
   printf("[INFO]: CUDA-GPU IMPLEMENTATION\n");
   printf("===============================\n");
+  printf("[INFO]: calculate meanshift with bandwidth=%lf and epsilon=%lf\n",BANDWIDTH,EPSILON);
 
   struct timeval startwtime, endwtime;
   double seq_time;
@@ -50,7 +50,7 @@ void parallel(){
   seq_time = (double)((endwtime.tv_usec - startwtime.tv_usec)/1.0e6
           + endwtime.tv_sec - startwtime.tv_sec);
 
-  printf("\n\n[INFO]: Parallel meanshift wall clock time = %f\n", seq_time);
+  printf("\n\n[INFO]: parallel meanshift wall clock time = %f\n", seq_time);
 
 }
 
@@ -64,7 +64,7 @@ void init_parallel(int version){
 // choose version according to N value and global memory size
 int choose_version(){
   double bytes = get_global_mem();
-  if (VERBOSE) printf( "[INFO]:Total global memory size for double: %lf\n", bytes); //193216512 bytes (diades)
+  if (VERBOSE) printf( "[INFO]: double device global memory size: %lf bytes\n", bytes); //193_216_512 bytes (diades)
   
   return (N*N > bytes/2) ? SPARSE_VERSION : EXHAUSTIVE_VERSION; 
 }
@@ -85,7 +85,7 @@ double get_global_mem(){
 
 //Contiguous memory allocation for 2D array
 void cpu_malloc(){
-  if(VERBOSE) printf("[INFO]: Allocating cpu memory..\n");
+  if(VERBOSE) printf("[INFO]: allocate cpu memory..\n");
 
   // malloc pointers to rows 
   HANDLE_NULL( (arr = (double **)     malloc(N * sizeof(double *))) );
@@ -105,7 +105,7 @@ void cpu_malloc(){
 void gpu_malloc (int version){
   int size; 
 
-  if(VERBOSE) printf("[INFO]: Allocating device memory..\n");
+  if(VERBOSE) printf("[INFO]: allocate device memory..\n");
 
   if(version == EXHAUSTIVE_VERSION){
     // malloc d_Pdist
@@ -135,7 +135,7 @@ void gpu_malloc (int version){
 
 
 void move_data_to_gpu(){
-  if(VERBOSE) printf("[INFO]: Move data to device..\n");
+  if(VERBOSE) printf("[INFO]: move data to device..\n");
 
   // move to device constant variables N_SIZE and D_SIZE
   HANDLE_ERROR( cudaMemcpyToSymbol (N_SIZE, &N, sizeof(int)) );
@@ -146,7 +146,7 @@ void move_data_to_gpu(){
 }
 
 void cpu_free_memory(){
-  if (VERBOSE) printf("[INFO]: Deallocating cpu memory...\n");
+  if (VERBOSE) printf("[INFO]: deallocate cpu memory...\n");
   
   // free global memory
   free(arr);
@@ -154,7 +154,7 @@ void cpu_free_memory(){
 }
 
 void gpu_free_memory(int version){
-  if (VERBOSE) printf("[INFO]: Deallocating gpu memory...\n");
+  if (VERBOSE) printf("[INFO]: deallocate gpu memory...\n");
 
   // free gpu memory
   HANDLE_ERROR( cudaFree(d_x_data) );
@@ -199,7 +199,7 @@ void write_csv_file (char *message, double **a, const int ROW, const int COL){
   FILE * fp;
   HANDLE_NULL( (fp = fopen (OUTPUT_PATH_PARALLEL, "w")) );
 
-  HANDLE_EOF( (fprintf(fp,"%s",message)) );
+  if (message != NULL)  HANDLE_EOF( (fprintf(fp,"%s",message)) );
 
   for (i=0; i<ROW; i++) {
     for (j=0; j<COL; j++){
@@ -237,9 +237,11 @@ void cuda_meanshift(int version){
     switch(version){
 
       case EXHAUSTIVE_VERSION:
+        if (iter == 1) printf ("[INFO]: choose exhaustive version\n");
+
         // find distances and calculate kernels
         start = clock();
-        gpu_pdist<<<blocks_per_grid, threads_per_block>>>(BANDWIDTH,d_Pdist, d_y_data, d_x_data, d_sum);
+        gpu_pdist<<<blocks_per_grid, threads_per_block>>>(BANDWIDTH,d_Pdist, d_y_data, d_x_data );
         printf("\t\tpdist: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
         // compute new y vector
@@ -255,6 +257,8 @@ void cuda_meanshift(int version){
         break;
 
       case SPARSE_VERSION:
+        if (iter == 1) printf ("[INFO]: choose sparse version\n");
+        
         // find distances and calculate kernels
         start = clock();
         rangesearch2sparse();
@@ -292,13 +296,13 @@ void cuda_meanshift(int version){
     norm = sqrt ( finish_reduction() );
     printf("\t\tnorm-serial: %f\n", ((double) (clock() - start)) / CLOCKS_PER_SEC);
 
-    if (VERBOSE) printf("[INFO]: Iteration %d - error %lf\n\n", iter, norm);   
+    if (VERBOSE) printf("[FINAL]: iteration %d - error %lf\n\n", iter, norm);   
   }
 
   // copy results back to host
   if (VERBOSE){  
     HANDLE_ERROR( cudaMemcpy(arr_data, d_y_new_data, N*D*sizeof(double), cudaMemcpyDeviceToHost) );
-    write_csv_file("",arr,N,D);
+    write_csv_file(NULL,arr,N,D);
   }
 
   gpu_free_memory(version);
@@ -325,54 +329,39 @@ void gpu_init_arr(double *x, double *y, double *m)
 // ====================================================================
 // ====================================================================
 __global__ 
-void gpu_pdist(double h, double *out, double *y, double *x, double *sum)
+void gpu_pdist(double h, double *out, double *y, double *x)
 {
   int tid = blockIdx.x*blockDim.x + threadIdx.x;
-  int count=0;
   double tmp, dist;
   
-  extern __shared__ double cache[]; // y[r] row at shared memory
+  // extern __shared__ double cache[]; // y[r] row at shared memory
   
-  for(int r=0; r<N_SIZE; r++){ //outer loop
-    dist = 0;
-    sum[r]=0;
+  while (tid < N_SIZE) {
 
-   //  // load row[r] of in array into shared memory
-   //  for(int i=0; i <= D_SIZE/blockDim.x; i++){
-   //    if (i*blockDim.x + threadIdx.x < D_SIZE){
-   //      if (r==0){
-   //        # if __CUDA_ARCH__>=200
-   //          printf("%d \n", tid);
+    for(int r=0; r<N_SIZE; r++){ //outer loop
+      dist = 0;
 
-   //        #endif 
-   //      }
-   //      cache[i*blockDim.x + threadIdx.x] = y[r*D_SIZE + i*blockDim.x + threadIdx.x];
-   //    }
-   // }
-   // __syncthreads();
+     // calculate distances of y[r] point and all x[tid] points
+     for(int i=0; i<D_SIZE; i++){
+        // tmp = cache[i] - x[tid*D_SIZE + i];
+        tmp = y[r*D_SIZE +i] - x[tid*D_SIZE + i];
+        dist += tmp*tmp;
+     }
 
-   // calculate distances of y[r] point and all x[tid] points
-   for(int i=0; i<D_SIZE && tid<N_SIZE; i++){
-      // tmp = cache[i] - x[tid*D_SIZE + i];
-      tmp = y[r*D_SIZE +i] - x[tid*D_SIZE + i];
-      dist += tmp*tmp;
-   }
-
-   // y is rows and x is columns
-   if (tid<N_SIZE){
+      // y is rows and x is columns
       if (dist == 0) {
         out[r*N_SIZE+tid] = 1;
-        // sum[r]++;
       }
       else if(dist < h*h){
         out[r*N_SIZE+tid] = exp(-dist / (2.0*h*h));
-        // sum[r] += out[r*N_SIZE+tid];
       }
       else {
         out[r*N_SIZE+tid] = 0;
       }
-    } 
-   // __syncthreads();
+   
+    }
+
+    tid += gridDim.x*blockDim.x;
   }
 }
 
@@ -382,7 +371,7 @@ void gpu_matrix_mult_exh(double *x, double *y, double *dist)
   int tid = threadIdx.x  + blockIdx.x*blockDim.x;
   int k, i,j;
   
-
+  // TODO: shared line of dist and column of x
   while(tid < N_SIZE*D_SIZE){
     // i and j indexes of flattened 2D array
     i = tid/D_SIZE; // i between [0,N_SIZE-1]
@@ -467,6 +456,7 @@ void rangesearch2sparse(){
         w[i][j].distance = buffer[id[j]];
     }
   }
+  HANDLE_ERROR( cudaFree(d_buffer) );
   // here sparse is ready!!!
   
   // making contiguous sparse eliminates most of the per-transfer overhead
@@ -480,6 +470,10 @@ void rangesearch2sparse(){
     }
   }
 
+  // // printf("SparseData = %ld\n", sizeof(SparseData)); //1_903_119_648
+  // printf("CPU count = %d\n", count); //1_903_119_648
+  // printf("all = %ld\n", count*sizeof(SparseData)); //1_903_119_648
+
   // move 2D host sparse to 1D device sparse
   HANDLE_ERROR( cudaFree(d_sparse) );
   HANDLE_ERROR( cudaMalloc((void**) &d_sparse, count*sizeof(SparseData)) );
@@ -492,6 +486,7 @@ void rangesearch2sparse(){
   // free memory
   for(i=0;i<N;i++)
     free(w[i]);
+  free(tmp_sparse);
   free(nNbr); free(sum); free(w); free(buffer); free(id);
 }
             
@@ -585,7 +580,7 @@ __global__ void gpu_calc_meanshift(double *m, double *y_new, double *y)
 
   while(tid < N_SIZE*D_SIZE){
     m[tid] = y_new[tid] - y[tid];
-    tid += gridDim.x+blockDim.x;
+    tid += gridDim.x*blockDim.x;
   }
 }
 
@@ -595,10 +590,13 @@ __global__ void gpu_copy_2Darray(double *src, double *dst)
 
   while(tid < N_SIZE*D_SIZE){
     dst[tid] = src[tid];
-    tid += gridDim.x+blockDim.x;
+    tid += gridDim.x*blockDim.x;
   }
 }
 
+__global__ void gpu_frob_norm_non_shared(double *m, double *final){
+
+}
 
 // TODO: non-shared implementation (use code from gpu_normalize)
 __global__ void gpu_frob_norm_shared(double *m, double *final){
@@ -631,29 +629,25 @@ __global__ void gpu_frob_norm_shared(double *m, double *final){
 
   // only 1rst thread of each block
   if (cacheIndex == 0)
-    final[blockIdx.x] = cache[0];
+    final[blockIdx.x] = cache[0]; 
 }
 
 
 // calculate last step of reduction on CPU because it's more efficient
 double finish_reduction(){
-  double  sum;
-  // double result[blocks_per_grid];
-  double *result;
+  double  sum, *result;
+  
   HANDLE_NULL( (result = (double *) malloc(blocks_per_grid * sizeof(double))) );
-  // int *nNbr;
-  // HANDLE_ERROR( cudaMemcpy(nNbr, d_nNbr, N*sizeof(int), cudaMemcpyDeviceToHost) );
 
   HANDLE_ERROR( cudaMemcpy( result,
                             d_reduction,
                             blocks_per_grid*sizeof(double),
                             cudaMemcpyDeviceToHost ) );
-  // exit(1);
   sum = 0;
-  for (int i=0; i<blocks_per_grid; i++)
+  for (int i=0; i<blocks_per_grid; i++){
       sum += result[i];
-  
-  // free(result);
+  }
+  free(result);
   return sum;
 }
 
@@ -666,3 +660,63 @@ void print_2Darray(double **a, const int ROW, const int COL){
   printf("\n");
   }
 }
+
+
+/*
+// calculate how many elements should sparse have
+__global__ 
+void gpu_find_size(double h, double *y, double *x, double *final, int* fuck)
+{
+  int tid = blockIdx.x*blockDim.x + threadIdx.x;
+  int count = 0;
+  double tmp, dist;
+
+  __shared__ int cache[threads_per_block];
+  int cacheIndex = threadIdx.x;
+
+  while (tid < N_SIZE) {
+
+    for(int r=0; r<N_SIZE; r++){ //outer loop
+      dist = 0; 
+
+      // calculate distances of y[r] point and all x[tid] points
+      for(int i=0; i<D_SIZE; i++){
+        tmp = y[r*D_SIZE +i] - x[tid*D_SIZE + i];
+        dist += tmp*tmp;
+      }
+
+      if(dist < h*h) count++;
+    }
+
+    tid += gridDim.x*blockDim.x;
+  }
+  cache[cacheIndex] = count;
+
+  // synchronize threads in this block
+  __syncthreads();
+
+  // for reductions, threads_per_block must be a power of 2
+  int i = blockDim.x/2;
+  while (i != 0) {
+      if (cacheIndex < i)
+        cache[cacheIndex] += cache[cacheIndex + i];
+
+      __syncthreads();
+      i /= 2;
+  }
+
+  // only 1rst thread of each block
+  if (cacheIndex == 0){
+    final[blockIdx.x] = (double) cache[0];
+
+  }
+
+  __syncthreads();
+ 
+  if (tid == 0) {
+    int sum=0;
+    for (i=0;i<blocks_per_grid;i++)
+      sum += (int)final[i];
+    *fuck = sum;
+}
+}*/

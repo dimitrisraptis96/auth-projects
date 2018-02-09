@@ -1,6 +1,7 @@
 CC=nvcc
 
 SRCDIR=src
+BINDIR=bin
 BUILDDIR=build
 TARGET=bin/meanshift
 
@@ -14,6 +15,7 @@ INC := -I include
 RM = rm -f
 
 $(TARGET): $(OBJECTS)
+	@mkdir -p $(BINDIR)
 	$(CC) $^ -o $(TARGET) -lm -g -G
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)*

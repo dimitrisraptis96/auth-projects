@@ -1,5 +1,5 @@
-./data/*
+./dataset/*
+./matlab/*
+./results/*
 ./bin/*
 ./build/*
-./plots
-./hellasgrid
