@@ -32,7 +32,7 @@ void set_args(int argc, char **argv){
     printf("arg[3] = BAND ==> bandwidth\n");
     printf("arg[4] = N    ==> number of points\n");
     printf("arg[5] = D    ==> point's dimensions\n");
-    printf("\n\nExiting program..\n");
+    printf("\n\nExit program..\n");
     exit(1);
   }
 
@@ -48,12 +48,12 @@ void set_args(int argc, char **argv){
 void check_args() {
   if (N<=0  || D<=0){
     printf("[ERROR]: Negative value for N or D.\n");
-    printf("\n\n[ERROR]: Exiting program..\n");
+    printf("\n\n[ERROR]: Exit program..\n");
     exit(1);
   }
   if (TYPE<1 || TYPE>3){
     printf("[ERROR]: TYPE value should be 1 or 2.\n");
-    printf("\n\n[ERROR]: Exiting program..\n");
+    printf("\n\n[ERROR]: Exit program..\n");
     exit(1);
   }
   return;

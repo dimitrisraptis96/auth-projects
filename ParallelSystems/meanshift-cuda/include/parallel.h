@@ -19,6 +19,7 @@
                                     __FILE__, __LINE__ ); \
                             exit( EXIT_FAILURE );}}
 
+//declare functions
 void init_parallel(int version);
 
 int choose_version();

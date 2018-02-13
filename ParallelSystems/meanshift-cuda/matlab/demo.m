@@ -25,7 +25,7 @@ varX     = 'X';
 varL     = 'L';
 
 % mean shift options
-h = 10;
+h = 10000;
 optMeanShift.epsilon = 1e-4*h;
 optMeanShift.verbose = true;
 optMeanShift.display = false;
@@ -40,7 +40,7 @@ fprintf('\n *** begin %s ***\n\n',mfilename);
 
 fprintf('...reading csv file...\n')
 
-x = csvread ('../dataset/csv/1024_32.csv');
+x = csvread ('../dataset/csv/100000_2.csv');
 
 figure('name', 'original_data')
 scatter(x(:,1),x(:,2));

@@ -1,6 +1,7 @@
 #ifndef GLOBAL_VARS_H_
 #define GLOBAL_VARS_H_
 
+// print verbose messages if it's set
 #ifndef VERBOSE
 #define VERBOSE 1
 #endif

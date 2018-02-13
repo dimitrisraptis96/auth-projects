@@ -164,7 +164,6 @@ static void meanshift(){
   free_memory();
 }
 
-// ADDED: id array to prevent looping until N
 static void rangesearch2sparse(){
   int i,j,k, *id;
   double dist, *buffer;
@@ -297,4 +296,3 @@ static void print_2Darray(double **a, const int ROW, const int COL){
 static double gaussian_kernel(const double dist){
     return exp(- dist / (2.0*BANDWIDTH*BANDWIDTH));
 }
-

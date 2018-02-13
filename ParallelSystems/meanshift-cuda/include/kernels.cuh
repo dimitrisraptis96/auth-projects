@@ -6,7 +6,6 @@ static void HandleError( cudaError_t err,
                          const char *file,
                          int line ) {
     if (err != cudaSuccess) {
-    	printf("here\n");	
         printf( "%s in %s at line %d\n", cudaGetErrorString( err ),
                 file, line );
         exit( EXIT_FAILURE );
@@ -14,6 +13,8 @@ static void HandleError( cudaError_t err,
 }
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
+
+// declare cuda kernels
 __global__ void gpu_init_arr(double *x, double *y, double *m);
 
 __global__ void gpu_calc_distances(int y_row, double h, double *buffer, double *y, double *x);

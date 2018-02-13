@@ -18,7 +18,8 @@
                             printf( "File reading failed in %s at line %d\n", \
                                     __FILE__, __LINE__ ); \
                             exit( EXIT_FAILURE );}}
-                            
+
+// declare functions                            
 void serial(void);
 
 void init_serial(void);
